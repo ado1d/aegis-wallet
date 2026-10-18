@@ -1,0 +1,31 @@
+{
+  "name": "aegis-agent",
+  "version": "3.7.0",
+  "description": "Aegis Wallet agent backend: accounts, per-user vaults, multilingual intent parsing, risk engine, policy enforcement",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "migrate": "node scripts/migrate.mjs",
+    "seed:demo": "node scripts/seed-demo.mjs",
+    "eval": "node eval/run-eval.js",
+    "eval:llm": "LLM_PROVIDER=all node eval/run-eval.js",
+    "build:corpora": "node eval/build-corpora.js",
+    "e2e": "node e2e.mjs",
+    "e2e:product": "node scripts/e2e-product.mjs",
+    "selfheal": "node scripts/v35-selfheal-test.mjs",
+    "check:llm": "node scripts/check-llm.mjs",
+    "test:convo": "node scripts/test-conversation.js",
+    "test:multilingual": "node scripts/test-multilingual.mjs",
+    "test:llm": "node scripts/test-llm-network.js",
+    "test:breaker": "node scripts/test-llm-breaker.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "ethers": "^6.13.4",
+    "pg": "^8.12.0"
+  }
+}

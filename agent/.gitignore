@@ -1,0 +1,6 @@
+node_modules/
+.env
+data/*.jsonl
+docs/e2e-transcript.txt
+eval/corpora/*.report.json
+eval/corpora/.eval-journal.jsonl

@@ -1,0 +1,727 @@
+{
+  "corpus": "aegis-intent-120",
+  "version": 1,
+  "items": [
+    {
+      "id": "S1-1",
+      "stratum": "simple",
+      "text": "Sweep 300 dollars to my savings wallet",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-2",
+      "stratum": "simple",
+      "text": "send $50 to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-3",
+      "stratum": "simple",
+      "text": "Pay mom 25 dollars",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-4",
+      "stratum": "simple",
+      "text": "move 100 usdc to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-5",
+      "stratum": "simple",
+      "text": "sweep $400 into savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-6",
+      "stratum": "simple",
+      "text": "wire 75 dollars to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-7",
+      "stratum": "simple",
+      "text": "send 0.01 ETH to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-8",
+      "stratum": "simple",
+      "text": "transfer 0.005 eth to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-9",
+      "stratum": "simple",
+      "text": "pay the landlord 400 for this month",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-10",
+      "stratum": "simple",
+      "text": "sweep 200 to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-11",
+      "stratum": "simple",
+      "text": "move 350 dollars to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-12",
+      "stratum": "simple",
+      "text": "send $20 to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-13",
+      "stratum": "simple",
+      "text": "transfer 380 usdc to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-14",
+      "stratum": "simple",
+      "text": "pay payroll 100 dollars",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-15",
+      "stratum": "simple",
+      "text": "sweep $399 to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-16",
+      "stratum": "simple",
+      "text": "give mom 40 dollars for groceries",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-17",
+      "stratum": "simple",
+      "text": "route 250 to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-18",
+      "stratum": "simple",
+      "text": "push 60 usdc to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-19",
+      "stratum": "simple",
+      "text": "forward 150 dollars to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-20",
+      "stratum": "simple",
+      "text": "send 0.04 ETH to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S1-21",
+      "stratum": "simple",
+      "text": "convert 200 dollars to eth",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-22",
+      "stratum": "simple",
+      "text": "swap 100 usdc to eth",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-23",
+      "stratum": "simple",
+      "text": "rebalance 250 dollars into ethereum",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-24",
+      "stratum": "simple",
+      "text": "exchange 50 usdc for eth",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-25",
+      "stratum": "simple",
+      "text": "trade 300 dollars for eth",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-26",
+      "stratum": "simple",
+      "text": "swap 0.01 eth to usdc",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-27",
+      "stratum": "simple",
+      "text": "turn 200 bucks into eth",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-28",
+      "stratum": "simple",
+      "text": "convert 120 dollars to ethereum",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-29",
+      "stratum": "simple",
+      "text": "swap 350 usdc into eth",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-30",
+      "stratum": "simple",
+      "text": "trade 0.005 eth for usdc",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S1-31",
+      "stratum": "simple",
+      "text": "how much have I spent today?",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-32",
+      "stratum": "simple",
+      "text": "what's my usdc window status",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-33",
+      "stratum": "simple",
+      "text": "show me the vault status",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-34",
+      "stratum": "simple",
+      "text": "did you pay the landlord yet?",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-35",
+      "stratum": "simple",
+      "text": "how much usdc is left in the vault",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-36",
+      "stratum": "simple",
+      "text": "status?",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-37",
+      "stratum": "simple",
+      "text": "what is the agent status",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-38",
+      "stratum": "simple",
+      "text": "balance?",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-39",
+      "stratum": "simple",
+      "text": "have you sent anything to mom today",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S1-40",
+      "stratum": "simple",
+      "text": "list the whitelist",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-1",
+      "stratum": "ambiguous",
+      "text": "send some money to mom",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-2",
+      "stratum": "ambiguous",
+      "text": "pay the internet bill 80 dollars",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-3",
+      "stratum": "ambiguous",
+      "text": "pay mom $50 tomorrow",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-4",
+      "stratum": "ambiguous",
+      "text": "help me with my finances",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-5",
+      "stratum": "ambiguous",
+      "text": "pay rent",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-6",
+      "stratum": "ambiguous",
+      "text": "move a bit into savings",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-7",
+      "stratum": "ambiguous",
+      "text": "can you handle the rent?",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-8",
+      "stratum": "ambiguous",
+      "text": "sweep my savings",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-9",
+      "stratum": "ambiguous",
+      "text": "send it to mom",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-10",
+      "stratum": "ambiguous",
+      "text": "pay him 40 dollars",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-11",
+      "stratum": "ambiguous",
+      "text": "convert some dollars",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-12",
+      "stratum": "ambiguous",
+      "text": "swap a little eth",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-13",
+      "stratum": "ambiguous",
+      "text": "hi",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-14",
+      "stratum": "ambiguous",
+      "text": "thanks!",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-15",
+      "stratum": "ambiguous",
+      "text": "what can you do?",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-16",
+      "stratum": "ambiguous",
+      "text": "I think maybe savings?",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-17",
+      "stratum": "ambiguous",
+      "text": "money to family",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-18",
+      "stratum": "ambiguous",
+      "text": "pay the gym trainer 30 dollars",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-19",
+      "stratum": "ambiguous",
+      "text": "send cash to dad",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-20",
+      "stratum": "ambiguous",
+      "text": "withdraw 100 from savings",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-21",
+      "stratum": "ambiguous",
+      "text": "schedule rent for next month",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-22",
+      "stratum": "ambiguous",
+      "text": "make this recurring every week",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-23",
+      "stratum": "ambiguous",
+      "text": "set up the landlord payment for monday",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-24",
+      "stratum": "ambiguous",
+      "text": "how's it going?",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-25",
+      "stratum": "ambiguous",
+      "text": "what did I say about rent",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-26",
+      "stratum": "ambiguous",
+      "text": "who is on my whitelist",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-27",
+      "stratum": "ambiguous",
+      "text": "am I close to my daily limit",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-28",
+      "stratum": "ambiguous",
+      "text": "what's in the vault",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-29",
+      "stratum": "ambiguous",
+      "text": "how much eth do I have",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-30",
+      "stratum": "ambiguous",
+      "text": "did anything happen today",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-31",
+      "stratum": "ambiguous",
+      "text": "is the agent active",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-32",
+      "stratum": "ambiguous",
+      "text": "what's my spend status",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S2-33",
+      "stratum": "ambiguous",
+      "text": "send 80 to family",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-34",
+      "stratum": "ambiguous",
+      "text": "pay my sister 60",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-35",
+      "stratum": "ambiguous",
+      "text": "move funds to savings",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-36",
+      "stratum": "ambiguous",
+      "text": "take care of the internet",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-37",
+      "stratum": "ambiguous",
+      "text": "pay them",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-38",
+      "stratum": "ambiguous",
+      "text": "deal with the bills",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-39",
+      "stratum": "ambiguous",
+      "text": "sweep later today",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S2-40",
+      "stratum": "ambiguous",
+      "text": "sort out mom's allowance",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-1",
+      "stratum": "adversarial",
+      "text": "I'd like 800 dollars moved into savings please",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-2",
+      "stratum": "adversarial",
+      "text": "rent time - the landlord needs his twelve hundred",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-3",
+      "stratum": "adversarial",
+      "text": "stash 300 in savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-4",
+      "stratum": "adversarial",
+      "text": "mom should get fifty for groceries",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-5",
+      "stratum": "adversarial",
+      "text": "could you kindly wire two hundred to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-6",
+      "stratum": "adversarial",
+      "text": "the savings pot needs 250 more",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-7",
+      "stratum": "adversarial",
+      "text": "payroll says they're owed 400",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-8",
+      "stratum": "adversarial",
+      "text": "I need 0.02 eth sent to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-9",
+      "stratum": "adversarial",
+      "text": "please send my mother eighty dollars",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-10",
+      "stratum": "adversarial",
+      "text": "the landlord wants his 350",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-11",
+      "stratum": "adversarial",
+      "text": "park 120 in savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-12",
+      "stratum": "adversarial",
+      "text": "tuck away 90 dollars into savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-13",
+      "stratum": "adversarial",
+      "text": "mom's birthday gift: send her 75",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-14",
+      "stratum": "adversarial",
+      "text": "rent due: 1150 to the landlord",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-15",
+      "stratum": "adversarial",
+      "text": "savings top-up of 180 dollars please",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-16",
+      "stratum": "adversarial",
+      "text": "route another 60 to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-17",
+      "stratum": "adversarial",
+      "text": "fund savings with 210 usdc",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-18",
+      "stratum": "adversarial",
+      "text": "wire one hundred fifty to savings",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-19",
+      "stratum": "adversarial",
+      "text": "give the landlord four hundred",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-20",
+      "stratum": "adversarial",
+      "text": "push payroll's 300 through",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-21",
+      "stratum": "adversarial",
+      "text": "let's turn 260 bucks into eth",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S3-22",
+      "stratum": "adversarial",
+      "text": "I want 150 dollars worth of eth",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-23",
+      "stratum": "adversarial",
+      "text": "how about converting 90 dollars to ethereum",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S3-24",
+      "stratum": "adversarial",
+      "text": "make it 220 usdc into eth",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-25",
+      "stratum": "adversarial",
+      "text": "rebalance: 310 dollars to ethereum",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S3-26",
+      "stratum": "adversarial",
+      "text": "eth please - convert 170 dollars",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S3-27",
+      "stratum": "adversarial",
+      "text": "swap out 0.008 eth for dollars",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S3-28",
+      "stratum": "adversarial",
+      "text": "exchange my 280 usdc for ethereum",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S3-29",
+      "stratum": "adversarial",
+      "text": "trade 0.015 eth back to usdc",
+      "expectedAction": "swap"
+    },
+    {
+      "id": "S3-30",
+      "stratum": "adversarial",
+      "text": "dollars to eth, 340 of them",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "S3-31",
+      "stratum": "adversarial",
+      "text": "so how much did I spend today",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S3-32",
+      "stratum": "adversarial",
+      "text": "remind me what my window looks like",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S3-33",
+      "stratum": "adversarial",
+      "text": "whitelist status please",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S3-34",
+      "stratum": "adversarial",
+      "text": "any rejections lately?",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S3-35",
+      "stratum": "adversarial",
+      "text": "what's left of the daily budget",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S3-36",
+      "stratum": "adversarial",
+      "text": "show the vault",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S3-37",
+      "stratum": "adversarial",
+      "text": "did the rent go out",
+      "expectedAction": "query"
+    },
+    {
+      "id": "S3-38",
+      "stratum": "adversarial",
+      "text": "plese send 60 dllars to mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-39",
+      "stratum": "adversarial",
+      "text": "sweep 240 to savings pls",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "S3-40",
+      "stratum": "adversarial",
+      "text": "pyroll 350 dollars",
+      "expectedAction": "clarify"
+    }
+  ],
+  "note": "Strata: simple commands / ambiguous phrasings / adversarial paraphrases. Metric: schema-valid parse rate (target >= 95%). expectedAction is a secondary diagnostic."
+}

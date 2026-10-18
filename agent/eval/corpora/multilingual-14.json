@@ -1,0 +1,105 @@
+{
+  "corpus": "aegis-multilingual-14",
+  "version": 1,
+  "note": "Task 24 — multilingual + code-mixing stratum. Every major language family, native script and romanized, plus mixed-script sentences. M-13 proves the whitelist guardrail still asks (never guesses) when the referent is not a payee; M-14 proves cross-lingual queries parse. Wired into run-eval.js alongside intent-120.",
+  "items": [
+    {
+      "id": "M-1",
+      "stratum": "multilingual",
+      "lang": "Hinglish (romanized Hindi)",
+      "text": "savings se landlord ko 50 dollar bhejo",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-2",
+      "stratum": "multilingual",
+      "lang": "Banglish (romanized Bengali)",
+      "text": "tui amr savings theke landlord ke 50 dollar patha",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-3",
+      "stratum": "multilingual",
+      "lang": "Spanish",
+      "text": "envía 50 dólares de savings a landlord",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-4",
+      "stratum": "multilingual",
+      "lang": "Chinese + English (code-mixed)",
+      "text": "从savings转50美元给landlord",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-5",
+      "stratum": "multilingual",
+      "lang": "Arabic + English (code-mixed)",
+      "text": "أرسل 50 دولار إلى mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-6",
+      "stratum": "multilingual",
+      "lang": "Bengali script + English (code-mixed)",
+      "text": "savings থেকে landlord কে ৫০ ডলার পাঠাও",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-7",
+      "stratum": "multilingual",
+      "lang": "French",
+      "text": "envoie 50 euros de savings à maman",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-8",
+      "stratum": "multilingual",
+      "lang": "Hindi (Devanagari)",
+      "text": "माँ को 50 रुपये भेजो",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-9",
+      "stratum": "multilingual",
+      "lang": "Indonesian",
+      "text": "kirim 50 dollar ke landlord",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-10",
+      "stratum": "multilingual",
+      "lang": "Tagalog",
+      "text": "padala ng 50 dollar kay mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-11",
+      "stratum": "multilingual",
+      "lang": "Japanese",
+      "text": "ママに50ドル送って",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-12",
+      "stratum": "multilingual",
+      "lang": "Vietnamese",
+      "text": "gửi 50 đô cho mom",
+      "expectedAction": "transfer"
+    },
+    {
+      "id": "M-13",
+      "stratum": "multilingual",
+      "lang": "French — guardrail (papa is not a whitelisted payee)",
+      "text": "donne 50 euros de savings à papa",
+      "expectedAction": "clarify"
+    },
+    {
+      "id": "M-14",
+      "stratum": "multilingual",
+      "lang": "Hindi + English query",
+      "text": "मेरा balance कितना है?",
+      "expectedAction": "query"
+    }
+  ]
+}

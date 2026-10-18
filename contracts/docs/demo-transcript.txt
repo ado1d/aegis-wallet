@@ -1,0 +1,175 @@
+AEGIS WALLET - CHECKPOINT 1 + CP1.1 HARDENING DEMO TRANSCRIPT
+=============================================================
+Run:      make demo  (local anvil chain, chainId 31337, Sepolia-fork-free)
+Date:     2026-10-14
+Result:   ALL GUARDRAILS HELD - exit code 0
+
+What this proves (per story):
+  Story 1  rolling 24h window caps the agent (no midnight boundary burst)
+  Story 2  small invoices auto-pay; large ones need human approval
+  Story 3  CP1.1 agentSwap: fixed-rate swap with minOut, unified accounting
+  Story 4  whitelist is an absolute floor (AI mistakes cost nothing)
+  Story 5  kill switch: pause -> revoke, sticky, only setAgent re-grants
+  CP1.1    rejection ledger: policy pre-check refusal + owner rejection
+           both land on-chain as RejectionLogged events
+
+--------------------------------------------------------------
+CONSOLE OUTPUT
+--------------------------------------------------------------
+==============================================================
+  AEGIS WALLET - CHECKPOINT 1 + CP1.1 HARDENING DEMO (real chain, real guardrails)
+  ==============================================================
+  [SETUP] MockUSDC + MockSwap + AegisVault deployed; vault funded 3,000 USDC + 5 ETH;
+  [SETUP] whitelist = [Savings Wallet, Acme Design Ltd];
+  [SETUP] USDC policy: max 1,000 USDC per agent tx / 1,500 USDC per ROLLING 24h window;
+  [SETUP] swap venue: MockSwap at a fixed $4,000/ETH rate with minOut floor.
+  ==============================================================
+  PHASE 1 - AGENT ACTIONS (autonomous, inside policy)
+  ==============================================================
+  [OK] Story 1 (Sarah): auto-swept 800 USDC to Savings Wallet  [savings=800 USDC]
+  [OK] Story 2a (Ahmed): auto-paid 300 USDC invoice to supplier
+  [OK] Story 3 (portfolio): swapped 200 USDC -> 0.05 ETH,  [vault ETH=5.050 ETH]
+  [OK] Rejection ledger: agent logged its off-chain policy refusal (CapWindow)
+  [OK] Story 2b (Ahmed): 1,200 USDC invoice routed to the APPROVAL QUEUE (nothing moved)
+       tx id 1: amount=1200 USDC, riskScore=15/100, status=Queued (WaitingApproval)
+  [note] agent spend in the rolling 24h window: 1300 USDC / 1,500 (800 sweep + 300 invoice + 200 swap sell)
+  ==============================================================
+  PHASE 2 - GUARDRAIL AUDIT (the chain itself says NO)
+  ==============================================================
+  [BLOCKED] Story 1b (Sarah): another 800 USDC sweep in the same 24h window
+       chain says: Aegis__ExceedsDailyLimit(spent=1300 USDC, requested=800 USDC, cap=1500 USDC)
+  [why] 1,300 already in the rolling window; +800 more = 2,100 > 1,500 cap.
+  [why] CP1.1: entries expire exactly 24h after they are spent (no midnight reset).
+  [BLOCKED] Story 4 (AI mistake): 500 USDC to an address NOT on the whitelist
+       chain says: Aegis__RecipientNotWhitelisted(recipient=0x9dF0C6b0066D5317aA5b38B36850548DaCCa6B4e)
+  [why] The whitelist is an absolute on-chain floor - it applies to the agent
+  [why] no matter what the AI 'decides'. Funds never left the vault:
+  [vault] vault USDC balance still = 1700 USDC
+  [BLOCKED] Story 2b (Ahmed): direct auto-pay of the 1,200 USDC invoice
+       chain says: Aegis__ExceedsPerTxLimit(requested=1200 USDC, cap=1000 USDC)
+  [why] That is exactly why the agent had to use the approval queue above.
+  [BLOCKED] window bypass attempt: swap 300 USDC to route around the spend cap
+       chain says: Aegis__ExceedsDailyLimit(spent=1300 USDC, requested=300 USDC, cap=1500 USDC)
+  [why] CP1.1 unified accounting: swaps consume the SAME rolling window
+  [why] as transfers on the sell-side asset - there is no swap-shaped bypass.
+  [BLOCKED] slippage attempt: swap 100 USDC demanding 1 ETH out (rate says 0.025)
+       chain says: MockSwap__BelowMinOut(would pay 0.025 ETH, minOut 1.000 ETH)
+  [why] The venue enforces minOut; a bad fill reverts the WHOLE transaction
+  [why] and the window entry rolls back - nothing is spent on a bad price.
+  ==============================================================
+  PHASE 3 - HUMAN-IN-THE-LOOP + KILL SWITCH
+  ==============================================================
+  [OK] Story 2b (Ahmed): owner approved + executed -> supplier received the 1,200 USDC
+       supplier=1500 USDC, agent window still 1300 USDC (human-approved = exempt from agent caps)
+  [OK] Rejection ledger (CP1.1): owner REJECTED the duplicate invoice - decision auto-logged on-chain
+       rejection entries: 2 (1 agent pre-check refusal + 1 owner rejection)
+  [OK] Story 5 (kill switch): owner PAUSED the agent with one transaction
+  [BLOCKED] Story 5: agent transfer while paused
+       chain says: Aegis__AgentPaused
+  [BLOCKED] Story 5: even the approval queue is frozen while paused
+       chain says: Aegis__AgentPaused
+  [OK] Story 5 (kill switch): owner REVOKED the agent (sticky: no resume path)
+  [BLOCKED] Story 5: agent transfer after revocation
+       chain says: Aegis__AgentRevoked
+  [why] Only an explicit owner `setAgent` can ever re-grant access.
+  ==============================================================
+  PHASE 4 - OWNER SOVEREIGNTY (no limits for the owner)
+  ==============================================================
+  [OK] recovery: owner withdrew 50 USDC + 0.01 ETH to a non-whitelisted address
+       it is the user's money; every owner action is event-logged
+  ==============================================================
+  DEMO SUMMARY
+  ==============================================================
+  vault USDC balance : 450 USDC
+  vault ETH balance  : 5.040 ETH
+  savings received   : 800 USDC
+  supplier received  : 1500 USDC
+  agent window spend : 1300 USDC / 1,500 rolling 24h
+  window ring buffer : 3/64 live entries (fails closed if full)
+  rejection ledger   : 2 entries
+  agent status       : 3 (0=None 1=Active 2=Paused 3=Revoked)
+  guardrail actions  : 17
+  RESULT             : ALL GUARDRAILS HELD - CHECKPOINT 1 + CP1.1 PASSED
+
+## Setting up 1 EVM.
+
+==========================
+
+Chain 31337
+
+Estimated max fee per gas: 2.000000001 gwei
+Estimated base fee per gas: 1 gwei
+Estimated max priority fee per gas: 0.000000001 gwei
+
+Estimated total gas used for script: 12456432
+
+Estimated amount required: 0.024912864012456432 ETH
+
+==========================
+
+
+==========================
+
+ONCHAIN EXECUTION COMPLETE & SUCCESSFUL.
+
+Transactions saved to: /home/z/my-project/aegis-wallet/contracts/broadcast/Demo.s.sol/31337/run-latest.json
+
+Sensitive values saved to: /home/z/my-project/aegis-wallet/contracts/cache/Demo.s.sol/31337/run-latest.json
+
+--------------------------------------------------------------
+BROADCAST TRANSACTIONS (real on-chain evidence, local chain)
+--------------------------------------------------------------
+26 real transactions broadcast to the local anvil chain (chainId 31337):
+
+ 1. 0x57e0c24b5afc09642d41a3ad85da79620731fb2fadf6a796f6e7a88c9d104025
+      MockUSDC.(contract creation / raw)()
+ 2. 0xa58db96ab4def5edc546d5799c3c59c3a93ca51353e4d25a4fec74b481d76a99
+      MockSwap.(contract creation / raw)()
+ 3. 0x7c90a488e1f5b49741e364b4a035dc1ba23aef3d141ab642b3fd9834268b530e
+      AegisVault.(contract creation / raw)(0x70997970C51812dc3A010C7d01b50e0d17dc79)
+ 4. 0x6084ecd5fe07a0d01c220ff24334db042d9e92de1f8e49a886b6bca911f413f6
+      MockUSDC.mint(address,uint256)(0xf39Fd6e51aad88F6F4ce6aB8827279cffFb922,5000000000)
+ 5. 0x62fc51b0e12386f5142176e178703f5ccc40664a2d93bb7e4973d06d73738d7c
+      MockUSDC.approve(address,uint256)(0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6,1157920892373161954235709850086879078532)
+ 6. 0xf8e47d8a610810f3f8225ce46002a71d29b220570c39033aed189b137d79a442
+      AegisVault.depositERC20(address,uint256)(0x5FbDB2315678afecb367f032d93F642f64180a,3000000000)
+ 7. 0xd4481ba3da12ac3b03df7a09411d816e46230a90f4e453d4ccab14e59c248dd2
+      AegisVault.deposit()()
+ 8. 0xce3d492d79f4d5243e965800e72e29754f7edae721bdd387b11e2adc03ba3e27
+      AegisVault.setWhitelist(address,string,bool)(0x7A4967F120EF486F4A0afF30a6044DafFb6118,Savings Wallet,true)
+ 9. 0x531e9f2a32c64607d4f9b6c3665575fc305b63ebbd1fcba7dbc336267caa46c2
+      AegisVault.setWhitelist(address,string,bool)(0x9060634B99Bbf1e1F324a7A1bC24d36Da7eD62,Acme Design Ltd (supplier),true)
+10. 0x45b5fa20383820faddbbd367649137c95dbd094e373bd37961d70749e5e70b13
+      AegisVault.setTokenPolicy(address,uint256,uint256)(0x5FbDB2315678afecb367f032d93F642f64180a,1000000000,1500000000)
+11. 0xb90e26e950de77561431875fd97b85492fd8ae0185ebd8a6edc67b033bfdf0d2
+      AegisVault.setSwapVenue(address)(0xe7f1725E7734CE288F8367e1Bb143E90bb3F05)
+12. 0xd8b332c730f1b893cefe481a030651b6c8e5be73f3f01364dc0ca858e470051b
+      MockSwap.setRate(address,address,uint256,uint256)(0x5FbDB2315678afecb367f032d93F642f64180a,0x00000000000000000000000000000000000000,1000000000000000000,4000000000)
+13. 0x089590a018c5e86caa49642b83dfc1f632f45f712eb820278e98eef493a36f99
+      .(contract creation / raw)()
+14. 0x1e201f286557ed9c2dce0ab99c6b4838b9ddd9f7242af51aea7faccb90b3deb1
+      AegisVault.agentExecute(address,address,uint256,string)(0x5FbDB2315678afecb367f032d93F642f64180a,0x7A4967F120EF486F4A0afF30a6044DafFb6118,800000000,Story 1: Monday sweep - keep 200 in spen)
+15. 0xd748b0536492ceea9f7f5e92dfd79e42fc3a6a61324513f5865a5d890b82eea5
+      AegisVault.agentExecute(address,address,uint256,string)(0x5FbDB2315678afecb367f032d93F642f64180a,0x9060634B99Bbf1e1F324a7A1bC24d36Da7eD62,300000000,Story 2a: invoice INV-2033, within polic)
+16. 0xb16f1e03b6315084bc5f824c5a92f23d5423c395c7b56fcf500c9b600ecd9585
+      AegisVault.submitForApproval(address,address,uint256,uint8,string)(0x5FbDB2315678afecb367f032d93F642f64180a,0x9060634B99Bbf1e1F324a7A1bC24d36Da7eD62,1200000000,15,Story 2b: invoice INV-2041 for 1,200 USD)
+17. 0x2c4418cc65b22e5e50d870d9d6aa15ae9456bee812b69ce7a6dee6ffc15eb9cd
+      AegisVault.submitForApproval(address,address,uint256,uint8,string)(0x5FbDB2315678afecb367f032d93F642f64180a,0x9060634B99Bbf1e1F324a7A1bC24d36Da7eD62,100000000,8,Story 2c: invoice INV-2050 for 100 USDC )
+18. 0x5937b6ecf85e79a80b1316d71e8ac68e078f03781614d3d6708230640a06f53a
+      AegisVault.agentSwap(address,address,uint256,uint256,string)(0x5FbDB2315678afecb367f032d93F642f64180a,0x00000000000000000000000000000000000000,200000000,49000000000000000,Story 3: rebalance - sell 200 USDC for E)
+19. 0x9e471979b2f034edb67156fda6d21edd04e7f78f9af38258c7889762cb9991ba
+      AegisVault.logRejection(bytes32,uint8)(0x9042bea60296590443365935654b0fd3045c93,2)
+20. 0x9346a5d6ab4e8f94ffb91045e49029a8c36490b52128fedacdefb5c0c57aeb64
+      AegisVault.approveTx(uint256)(1)
+21. 0x51e0be999cb9bd0a7cd51fb8b3746d58f56087ca7aaa41aa50bc8751fafc192c
+      AegisVault.executeApprovedTx(uint256)(1)
+22. 0xc015b437ffe187ef1f54c261586cf544bbcd80f799cbceac925eca832c023b53
+      AegisVault.rejectTx(uint256)(2)
+23. 0xfaf0e3971e16aa7a06b94c34b2db29ff54c86087db3cf787e48059764ba1b590
+      AegisVault.pauseAgent()()
+24. 0x151d542a42249ae5cd814a160912bf59c27b083fe934219e65876c3c42f855ec
+      AegisVault.revokeAgent()()
+25. 0xe7dc7fd43969109d3594622b41e7eb2310825b1d564ac13be476b911d1b8ea4a
+      AegisVault.ownerWithdraw(address,address,uint256)(0x5FbDB2315678afecb367f032d93F642f64180a,0x022a70D64AD71E7Cb615a0df171A916987a6b3,50000000)
+26. 0x0c663a09e6ba92b351ca486d6096527289b224bcee575203a3c477355a801a23
+      AegisVault.ownerWithdraw(address,address,uint256)(0x00000000000000000000000000000000000000,0x022a70D64AD71E7Cb615a0df171A916987a6b3,10000000000000000)

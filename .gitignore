@@ -1,0 +1,15 @@
+node_modules/
+.next/
+out/
+cache/
+broadcast/
+.env
+data/
+agent/data/
+agent/.env
+dashboard/.env
+*.log
+
+# generated eval outputs (run `npm run eval` to regenerate)
+agent/eval/report.md
+agent/eval/report.json

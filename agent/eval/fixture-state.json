@@ -1,0 +1,60 @@
+{
+  "agentStatus": 1,
+  "agentStatusName": "Active",
+  "whitelist": [
+    {
+      "address": "0xabc1111111111111111111111111111111111111",
+      "label": "Savings Wallet"
+    },
+    {
+      "address": "0xabc2222222222222222222222222222222222222",
+      "label": "Rent - Landlord"
+    },
+    {
+      "address": "0xabc3333333333333333333333333333333333333",
+      "label": "Mom"
+    },
+    {
+      "address": "0xabc4444444444444444444444444444444444444",
+      "label": "Payroll - Acme Corp"
+    }
+  ],
+  "tokens": {
+    "USDC": {
+      "symbol": "USDC",
+      "address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+      "decimals": 6,
+      "maxPerTx": "1000000000",
+      "dailyLimit": "1500000000",
+      "spentInWindow": "300000000",
+      "liveEntries": 1,
+      "capacity": 64,
+      "vaultBalance": "400000000"
+    },
+    "ETH": {
+      "symbol": "ETH",
+      "address": "0x0000000000000000000000000000000000000000",
+      "decimals": 18,
+      "maxPerTx": "50000000000000000",
+      "dailyLimit": "100000000000000000",
+      "spentInWindow": "0",
+      "liveEntries": 0,
+      "capacity": 64,
+      "vaultBalance": "5000000000000000000"
+    }
+  },
+  "codesize": {
+    "0xabc2222222222222222222222222222222222222": "0x6080604052",
+    "0xabc1111111111111111111111111111111111111": "0x",
+    "0xabc3333333333333333333333333333333333333": "0x",
+    "0xabc4444444444444444444444444444444444444": "0x",
+    "0xabc1111111111111111111111111111111111112": "0x",
+    "0x000000000000000000000000000000000000dead": "0x"
+  },
+  "history": [
+    {
+      "token": "USDC",
+      "amount": 300000000
+    }
+  ]
+}

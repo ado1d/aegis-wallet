@@ -1,0 +1,64 @@
+# Aegis Wallet — Render Blueprint (all free tier, no credit card)
+#
+# Deployed from the GitHub repo. Values marked `sync: false` are secrets set
+# in the Render dashboard (or via API) — never committed to the repo.
+# See the README (Deployment) for the full walk-through.
+
+services:
+  # ── the agent: accounts, per-user vaults, the AI decision matrix ──────────
+  - type: web
+    name: aegis-agent
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: agent
+    buildCommand: npm ci
+    startCommand: node src/server.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20.18.1"
+      - key: AEGIS_MODE
+        value: product
+      - key: HOST
+        value: 0.0.0.0          # Render routes to the open port
+      - key: LLM_PROVIDER
+        value: rules            # deterministic; set "all" + OPENAI_API_KEY for LLM intent
+      # ── secrets (sync: false = set in dashboard/API) ──────────────────────
+      - key: RPC_URL            # Alchemy Sepolia HTTPS endpoint
+        sync: false
+      - key: USDC_ADDRESS       # MockUSDC on Sepolia (from Deploy.s.sol)
+        sync: false
+      - key: VENUE_ADDRESS      # MockSwap on Sepolia
+        sync: false
+      - key: AGENT_KEY          # operator key (funded; deploys user vaults + pays their gas)
+        sync: false
+      - key: DATABASE_URL       # Neon Postgres connection string
+        sync: false
+      - key: AEGIS_SERVER_SECRET # relayer envelope key (openssl rand -hex 32)
+        sync: false
+      - key: KEEPALIVE_URL      # https://aegis-dashboard.onrender.com (pings keep both warm)
+        sync: false
+      - key: DEMO_EMAIL
+        value: demo@aegis.app
+      - key: DEMO_PASSWORD
+        sync: false
+
+  # ── the dashboard: landing, accounts, onboarding, the app ─────────────────
+  - type: web
+    name: aegis-dashboard
+    runtime: node
+    plan: free
+    region: singapore
+    rootDir: dashboard
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "20.18.1"
+      - key: NEXT_PUBLIC_AEGIS_MODE
+        value: product
+      - key: NEXT_PUBLIC_AGENT_URL # https://aegis-agent.onrender.com
+        sync: false

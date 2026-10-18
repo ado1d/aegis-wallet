@@ -1,0 +1,25 @@
+# Synthetic uptime check for a deployed Aegis agent.
+# Hits the public agent every 30 minutes; the workflow staying red for two
+# consecutive runs means the deployed demo needs attention.
+#
+# Setup: repo Settings -> Secrets and variables -> Actions -> new secret:
+#   AGENT_URL = https://your-agent-host.example.com
+
+name: uptime-check
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # every 30 minutes
+  workflow_dispatch: {} # manual trigger for verification
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node dashboard/scripts/uptime-check.mjs
+        env:
+          AGENT_URL: ${{ secrets.AGENT_URL }}
