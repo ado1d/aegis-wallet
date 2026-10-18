@@ -75,13 +75,13 @@ export default function TabHome({ me, onRun }) {
 
       <WalletAccounts me={me} />
 
-      <Card title="Quick actions" note="One tap pre-fills the console; you always see the command before it runs.">
+      <Card title="Quick actions" note="One tap sends it to the console, where you can watch the decision unfold.">
         <div className="qa-row">
           <button className="btn" onClick={() => onRun("Move 100 dollars to my savings wallet")}>
             → Move 100 to savings
           </button>
-          <button className="btn" onClick={() => onRun("Swap 200 dollars to ETH")}>
-            ⇄ Swap 200 USDC→ETH
+          <button className="btn" onClick={() => onRun("Swap 50 dollars to ETH")}>
+            ⇄ Swap 50 USDC→ETH
           </button>
           <button className="btn" onClick={() => onRun("How much can I spend today?")}>
             ? How much can I spend today?
@@ -128,7 +128,7 @@ function WalletAccounts({ me }) {
   const totalEth = ethParts.filter((x) => x != null).reduce((a, x) => a + x, 0);
 
   return (
-    <Card title="Your wallets & balances" note="Every address you own, with live balances; nothing hidden, nothing interpolated.">
+    <Card title="Your wallets & balances" note="Every address you own, with live on-chain balances.">
       <div className="acct-list">
         {rows.map((r) => (
           <div className="acct-row" key={r.k}>

@@ -161,6 +161,42 @@ export function convoFor(userId) {
   return c;
 }
 
+/** Hydrate the per-user memory, restoring from the store on cache misses.
+ *  On a long-running server the RAM map is always warm and this is identical
+ *  to convoFor(). On serverless (Vercel) a cold start begins with an empty
+ *  map — this reloads the last persisted turns + pending clarify slots so a
+ *  follow-up answer ("savings") still completes the round across instances. */
+export async function loadConvo(userId) {
+  let c = MEMORIES.get(userId);
+  if (c) return c;
+  c = makeConvo();
+  try {
+    const store = (await import("./store.js")).getStore();
+    const state = await store.getConvoState(userId);
+    if (state && Array.isArray(state.turns)) {
+      c.turns = state.turns.slice(-MAX_TURNS);
+      c.pending = state.pending || null;
+    }
+  } catch {
+    /* store hiccup — a fresh memory beats a failed message */
+  }
+  MEMORIES.set(userId, c);
+  return c;
+}
+
+/** Persist turns + pending after a message round (Postgres store persists;
+ *  the in-memory store just keeps its map — same behavior as before v3.9). */
+export async function saveConvo(userId) {
+  const c = MEMORIES.get(userId);
+  if (!c) return;
+  try {
+    const store = (await import("./store.js")).getStore();
+    await store.setConvoState(userId, { turns: c.turns, pending: c.pending });
+  } catch {
+    /* non-fatal — chat answers even if the persistence layer blips */
+  }
+}
+
 // test/eval isolation
 export function _resetMemories() {
   MEMORIES.clear();

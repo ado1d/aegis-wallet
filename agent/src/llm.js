@@ -15,7 +15,7 @@ import { config } from "./config.js";
 
 // Served through the HF router by several providers; a solid default for the
 // strict-JSON intent task. Override with LLM_MODEL=<any model id your account
-// can call> — see the README, LLM configuration, for tested alternatives.
+// can call>.
 const HF_DEFAULT_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
 
 // ── proxy-aware fetch ──────────────────────────────────────────────────────
@@ -114,7 +114,7 @@ function hintFor(err) {
   if (/ENOTFOUND|EAI_AGAIN/.test(text))
     return "DNS cannot resolve the endpoint. WSL: check /etc/resolv.conf (try nameserver 8.8.8.8), or set OPENAI_BASE_URL to a relay you can reach";
   if (/ETIMEDOUT|CONNECT_TIMEOUT|ECONNREFUSED|EHOSTUNREACH|fetch failed/i.test(text))
-    return `cannot connect. If your internet needs a Windows-side VPN/proxy, add HTTPS_PROXY=http://<windows-host>:<port> to agent/.env and run: npm i undici (see the README, troubleshooting)`;
+    return `cannot connect. If your internet needs a Windows-side VPN/proxy, add HTTPS_PROXY=http://<windows-host>:<port> to agent/.env and run: npm i undici`;
   if (/HTTP 401|HTTP 403/.test(text))
     return "key rejected — check OPENAI_API_KEY (and OPENAI_BASE_URL if you use a relay)";
   if (/HTTP 404/.test(text))

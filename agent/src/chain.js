@@ -7,6 +7,7 @@ import { ethers } from "ethers";
 import { VAULT_ABI, ERC20_ABI, VENUE_ABI, AGENT_STATUS } from "./abi.js";
 import { config, tokens, NATIVE, tokenByAddress, toBaseUnits } from "./config.js";
 import { appendJournal } from "./journal.js";
+import { getStore } from "./store.js";
 
 const provider = new ethers.JsonRpcProvider(config.rpcUrl);
 const ownerWallet = config.ownerKey
@@ -28,7 +29,12 @@ export async function resetNonceManagers() {
   await Promise.all(wallets.map((w) => (typeof w.reset === "function" ? w.reset() : Promise.resolve())));
 }
 
-export const vault = new ethers.Contract(config.vault, VAULT_ABI, provider);
+// Product mode runs with VAULT_ADDRESS empty (per-user vaults are deployed at
+// signup). ethers treats "" as an ENS name and throws at import time, so the
+// judge-mode singleton is parked at the zero address instead: it is never
+// CALLED in product mode (the event poller returns early on empty config.vault
+// and every product path goes through per-user contexts).
+export const vault = new ethers.Contract(config.vault || ethers.ZeroAddress, VAULT_ABI, provider);
 export const venue = config.venue ? new ethers.Contract(config.venue, VENUE_ABI, provider) : null;
 export const vaultAsAgent = agentWallet ? vault.connect(agentWallet) : null;
 export const vaultAsOwner = ownerWallet ? vault.connect(ownerWallet) : null;
@@ -61,13 +67,19 @@ export function mintMockUsdc(to, baseAmount) {
 /** Plain native-ETH transfer from any wallet (provisioner seeding). */
 export async function sendEthFrom(wallet, to, amountEth) {
   if (config.dryRun) return { hash: "dry-run", ok: true };
-  try {
-    const tx = await wallet.sendTransaction({ to, value: ethers.parseEther(String(amountEth)) });
-    const rc = await tx.wait();
-    return { hash: rc.hash, ok: rc.status === 1 };
-  } catch (err) {
-    return { hash: null, ok: false, revert: explainRevert(err) };
-  }
+  return withKeyLease(wallet, async (nonce) => {
+    try {
+      const tx = await wallet.sendTransaction({
+        to,
+        value: ethers.parseEther(String(amountEth)),
+        ...(nonce != null ? { nonce } : {}),
+      });
+      const rc = await tx.wait();
+      return { hash: rc.hash, ok: rc.status === 1 };
+    } catch (err) {
+      return { hash: null, ok: false, revert: explainRevert(err) };
+    }
+  });
 }
 
 // ── chain identity (explorer links etc.) ────────────────────────────────────
@@ -76,16 +88,44 @@ export async function chainInfo() {
   if (_chainInfo) return _chainInfo;
   try {
     const net = await provider.getNetwork();
-    const explorers = { 11155111n: "https://sepolia.etherscan.io", 1n: "https://etherscan.io" };
+    const explorers = {
+      11155111n: "https://sepolia.etherscan.io",
+      1n: "https://etherscan.io",
+      80002n: "https://amoy.polygonscan.com",
+    };
+    const names = {
+      11155111n: "sepolia",
+      31337n: "anvil (local)",
+      80002n: "amoy (testnet)",
+      1n: "ethereum mainnet",
+    };
     _chainInfo = {
       chainId: Number(net.chainId),
-      name: net.chainId === 11155111n ? "sepolia" : net.chainId === 31337n ? "anvil (local)" : `chain ${net.chainId}`,
-      explorer: explorers[net.chainId] || "",
+      name: names[net.chainId] || `chain ${net.chainId}`,
+      explorer: config.explorerUrl || explorers[net.chainId] || "",
     };
   } catch {
-    _chainInfo = { chainId: 0, name: "unreachable", explorer: "" };
+    _chainInfo = { chainId: 0, name: "unreachable", explorer: config.explorerUrl || "" };
   }
   return _chainInfo;
+}
+
+/** Explorer URL for a tx hash (null when no explorer is known, or the value is
+ *  not a real 32-byte hash — "dry-run" never linkifies). Used by the executor
+ *  to append a clickable link to every reply that carries a transaction. */
+export async function txLink(hash) {
+  if (!hash || !/^0x[0-9a-fA-F]{64}$/.test(String(hash))) return null;
+  const info = await chainInfo();
+  return info.explorer ? `${info.explorer.replace(/\/$/, "")}/tx/${hash}` : null;
+}
+
+/** Wait bound for the request-path self-heal. Anvil mines instantly (30s is
+ *  generous); live testnets need one block per tx and a full re-provision is
+ *  6+ transactions, so 180s. An explicit PROVISION_TIMEOUT_MS always wins. */
+export async function provisionBoundMs() {
+  if (config.provisionTimeoutMs > 0) return config.provisionTimeoutMs;
+  const info = await chainInfo();
+  return info.chainId === 31337 ? 30_000 : 180_000;
 }
 
 /** Map an ethers revert into a human-readable custom-error string. */
@@ -116,15 +156,65 @@ export async function simulate(contract, method, ...args) {
   }
 }
 
-/** Broadcast and wait; returns {hash, block, ok, revert?}. */
+/** Broadcast and wait; returns {hash, block, ok, revert?}.
+ *
+ *  Every send is serialized PER SIGNING KEY through a cross-instance lease
+ *  (store-backed when Postgres is configured, per-process otherwise) and
+ *  carries a nonce fetched FRESH under that lease. Rationale: on serverless
+ *  hosting several instances share one agent key while each owns a private
+ *  in-memory NonceManager — concurrent broadcasts collide, transactions get
+ *  replaced, and callers used to record phantom "executed" decisions. The
+ *  lease + fresh nonce makes every broadcast deterministic. */
 export async function send(contract, method, ...args) {
   if (config.dryRun) return { hash: null, block: null, ok: true, dryRun: true };
+  return withKeyLease(contract?.runner, async (nonce) => {
+    try {
+      const tx = await contract[method](...args, ...(nonce != null ? [{ nonce }] : []));
+      const rc = await tx.wait();
+      return { hash: rc.hash, block: rc.blockNumber, ok: rc.status === 1, receipt: rc };
+    } catch (err) {
+      return { hash: null, block: null, ok: false, revert: explainRevert(err) };
+    }
+  });
+}
+
+// ── per-key send serialization ─────────────────────────────────────────────
+const HOLDER = `${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
+
+/** Run `fn` while holding the lease for the wallet's address. When the store
+ *  is Postgres the lease is shared by EVERY instance (the fix for serverless
+ *  nonce collisions); with the in-memory store it still serializes threads
+ *  inside this process. Best effort: if the store is unreachable the send
+ *  proceeds WITHOUT the lease rather than failing the user's command. */
+async function withKeyLease(wallet, fn) {
+  let addr = null;
   try {
-    const tx = await contract[method](...args);
-    const rc = await tx.wait();
-    return { hash: rc.hash, block: rc.blockNumber, ok: rc.status === 1, receipt: rc };
-  } catch (err) {
-    return { hash: null, block: null, ok: false, revert: explainRevert(err) };
+    if (wallet && typeof wallet.getAddress === "function") addr = await wallet.getAddress();
+  } catch { /* non-signer runner — nothing to serialize */ }
+  if (!addr) return fn();
+
+  const store = getStore();
+  if (typeof store?.acquireLease !== "function") return fn();
+  const lease = await store
+    .acquireLease(`tx:${addr.toLowerCase()}`, HOLDER, 150_000, 75_000)
+    .catch(() => ({ ok: false, degraded: true }));
+  if (!lease?.ok) {
+    // lease unavailable: either genuinely busy or the store hiccuped. Fail
+    // CLOSED with a retryable message — the executor surfaces it honestly
+    // and nothing is recorded as executed.
+    return {
+      hash: null, block: null, ok: false,
+      revert: "the sending key is busy with another in-flight transaction — try again in a few seconds",
+    };
+  }
+  try {
+    // fresh nonce under the lease: correct even if OTHER instances sent txs
+    // since this one's NonceManager was last used
+    let nonce = null;
+    try { nonce = await provider.getTransactionCount(addr, "pending"); } catch { /* fall back to manager */ }
+    return await fn(nonce);
+  } finally {
+    try { await lease.release(); } catch { /* expired — fine */ }
   }
 }
 

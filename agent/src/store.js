@@ -31,6 +31,7 @@ class MemoryStore {
     this.activities = new Map(); // userId -> [entry] (ascending)
     this.payees = new Map(); // userId -> [row]
     this.notifications = new Map(); // userId -> [row]
+    this.convos = new Map(); // userId -> {turns, pending} (v3.9 convo persistence)
     this.seq = 0;
   }
   async ping() { return true; }
@@ -114,6 +115,30 @@ class MemoryStore {
     if (n) n.read = true;
   }
 
+  async getConvoState(userId) { return this.convos.get(userId) || null; }
+  async setConvoState(userId, state) { this.convos.set(userId, { turns: state.turns, pending: state.pending }); }
+
+  // ── cross-task leases (in-memory backend: per-process map of promises) ────
+  async acquireLease(key, holder, ttlMs = 150_000, waitMs = 60_000) {
+    if (!this._leaseChains) this._leaseChains = new Map();
+    const deadline = Date.now() + waitMs;
+    while (this._leaseChains.has(key) && Date.now() < deadline) {
+      // wake up on holder release OR on a short timer — never block past the deadline
+      await Promise.race([
+        this._leaseChains.get(key).catch(() => {}),
+        new Promise((r) => setTimeout(r, Math.min(250, Math.max(20, deadline - Date.now())))),
+      ]);
+    }
+    if (this._leaseChains.has(key)) return { ok: false };
+    let release;
+    const p = new Promise((res) => (release = res));
+    this._leaseChains.set(key, p);
+    return {
+      ok: true,
+      release: async () => { if (this._leaseChains.get(key) === p) this._leaseChains.delete(key); release(); },
+    };
+  }
+
   async stats() {
     return {
       users: this.users.size,
@@ -128,9 +153,61 @@ class PgStore {
   constructor(pool) {
     this.kind = "pg";
     this.pool = pool;
+    this._leaseTablePromise = null;
   }
   async ping() { await this.pool.query("SELECT 1"); return true; }
   async close() { await this.pool.end(); }
+
+  /** Idempotent CREATE for the lease table (memoized; safe under concurrency
+   *  because every caller awaits the same promise). Also covered by migration
+   *  003 for clean-slate deploys. */
+  _ensureLeaseTable() {
+    if (!this._leaseTablePromise) {
+      this._leaseTablePromise = this.pool
+        .query(
+          `CREATE TABLE IF NOT EXISTS chain_leases (
+             key text PRIMARY KEY,
+             holder text NOT NULL,
+             expires_at timestamptz NOT NULL
+           )`
+        )
+        .catch((err) => { this._leaseTablePromise = null; throw err; });
+    }
+    return this._leaseTablePromise;
+  }
+
+  /** Cross-INSTANCE lease (serverless: several functions share the agent key).
+   *  Atomic upsert-or-steal-expired; polls until acquired or waitMs elapses.
+   *  Returns { ok, release } — release is always safe to call. */
+  async acquireLease(key, holder, ttlMs = 150_000, waitMs = 60_000) {
+    await this._ensureLeaseTable();
+    const deadline = Date.now() + waitMs;
+    for (;;) {
+      const { rows } = await this.pool
+        .query(
+          `INSERT INTO chain_leases (key, holder, expires_at)
+           VALUES ($1, $2, now() + make_interval(secs => $3))
+           ON CONFLICT (key) DO UPDATE
+             SET holder = $2, expires_at = now() + make_interval(secs => $3)
+             WHERE chain_leases.expires_at <= now()
+           RETURNING holder`,
+          [key, holder, ttlMs / 1000]
+        )
+        .catch(() => ({ rows: [] })); // table momentarily unavailable → treat as busy
+      if (rows.length) {
+        return {
+          ok: true,
+          release: async () => {
+            await this.pool
+              .query(`DELETE FROM chain_leases WHERE key = $1 AND holder = $2`, [key, holder])
+              .catch(() => {});
+          },
+        };
+      }
+      if (Date.now() >= deadline) return { ok: false };
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+  }
 
   async createUser({ email, name, passwordHash }) {
     const id = randomUUID();
@@ -270,6 +347,20 @@ class PgStore {
   }
   async markNotificationRead(userId, id) {
     await this.pool.query(`UPDATE notifications SET read=true WHERE user_id=$1 AND id=$2`, [userId, id]);
+  }
+
+  // v3.9 — conversation memory (multi-turn chat) survives cold starts on
+  // serverless hosting; RAM stays the hot path, this is the recovery copy.
+  async getConvoState(userId) {
+    const { rows } = await this.pool.query(`SELECT state FROM user_convo WHERE user_id=$1`, [userId]);
+    return rows.length ? rows[0].state : null;
+  }
+  async setConvoState(userId, state) {
+    await this.pool.query(
+      `INSERT INTO user_convo (user_id, state) VALUES ($1,$2)
+       ON CONFLICT (user_id) DO UPDATE SET state=$2, updated_at=now()`,
+      [userId, JSON.stringify(state)]
+    );
   }
 
   async stats() {

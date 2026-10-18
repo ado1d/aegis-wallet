@@ -55,13 +55,20 @@ contracts/   Foundry project: AegisVault, deployment script, 75 tests
              (lib/ carries vendored OpenZeppelin and forge-std, kept so a
              fresh clone builds with no extra setup)
 agent/       Node backend: accounts, per-user vaults, intent, risk, policy,
-             the API server (Express-style, port 8787)
+             the API server. Runs as a normal process (npm start) or as a
+             single Vercel serverless function (api/index.js + vercel.json).
+             migrations/ holds the Postgres schema; npm run migrate applies it.
 dashboard/   Next.js web app: landing, signup, onboarding, and the
              seven-tab app (Home, Console, Approvals, Activity, Payees,
-             Limits, Security)
+             Limits, Security). public/ carries the logo assets.
 render.yaml  Blueprint that deploys agent + dashboard to Render, free tier
 .github/     Uptime workflow for a deployed agent
 ```
+
+A live install runs on Sepolia: the dashboard at
+https://aegis-dashboard-rosy.vercel.app and the agent API at
+https://aegis-agent-khaki.vercel.app (see /health). Testnet play money
+only.
 
 ## Quick start (local)
 
@@ -117,18 +124,29 @@ anvil accounts; they exist for local demos only.
 
 ## Deployment
 
-Two services make up a hosted install: the agent (a long-running Node
-process) and the dashboard (a static Next.js build).
+Two parts make up a hosted install: the agent (an HTTP API) and the
+dashboard. Both run on Vercel's free tier, and this is how the live demo
+above is hosted.
 
-For Render, `render.yaml` is a complete blueprint: `aegis-agent` and
-`aegis-dashboard` on the free tier, with the secrets marked `sync: false`
-set once in the Render dashboard. Point a Render account at this repository
-and the blueprint creates both services.
+For the agent, import this repository into a Vercel project with the root
+directory set to `agent`. Vercel picks up `agent/vercel.json`, which routes
+every request to one serverless function (`agent/api/index.js`) with a
+300-second limit, so slow on-chain vault provisioning survives. The agent
+needs a Postgres database: create one anywhere (Neon and Supabase free
+tiers work), set `DATABASE_URL`, then run `npm run migrate` once from
+`agent/` with that same `DATABASE_URL`. Set the remaining variables from
+`agent/.env.example` in the project's environment settings: `RPC_URL` (a
+Sepolia endpoint), `USDC_ADDRESS` and `VENUE_ADDRESS` (from the deploy
+script output), `AGENT_KEY` (a funded burner testnet key),
+`AEGIS_SERVER_SECRET`, and optionally `OPENAI_API_KEY` for LLM parsing.
 
-For Vercel, import this repository, set the root directory to `dashboard`,
-and set `NEXT_PUBLIC_AGENT_URL` to the public agent URL plus
-`NEXT_PUBLIC_AEGIS_MODE=product`. The agent itself still needs a Node host;
-the Render blueprint above covers it.
+For the dashboard, import the repository again with the root directory set
+to `dashboard`, and set `NEXT_PUBLIC_AGENT_URL` to the agent's public URL
+plus `NEXT_PUBLIC_AEGIS_MODE=product`.
+
+On Render, `render.yaml` is a complete alternative blueprint: `aegis-agent`
+and `aegis-dashboard` on the free tier, with the secrets marked `sync:
+false` set once in the Render dashboard.
 
 To use the uptime workflow, set an `AGENT_URL` secret in the repository's
 Actions settings. The check works in both agent modes and fails loudly when

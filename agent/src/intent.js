@@ -442,9 +442,13 @@ function nearFromMarker(pre, post, pos, toMarkers = []) {
  * are sources and can never be the recipient.
  */
 export function extractRecipient(text, whitelist) {
-  // explicit address always wins (it will be screened by policy + risk)
+  // explicit address always wins (it will be screened by policy + risk).
+  // .address is stamped here so every consumer downstream (policy, risk
+  // codesize screening, executor agentExecute/submitForApproval encoding)
+  // sees a concrete address — a missing .address reaches ethers as undefined
+  // and dies with the cryptic "unsupported addressable value" INVALID_ARGUMENT.
   const addr = text.match(/0x[0-9a-fA-F]{40}/);
-  if (addr) return { type: "address", value: addr[0] };
+  if (addr) return { type: "address", value: addr[0], address: addr[0] };
   if (!whitelist || whitelist.length === 0) return null;
 
   const flat = flatten(text);
@@ -703,6 +707,11 @@ export function validateIntent(intent, whitelist = [], knownTokens = ["USDC", "E
       else intent.recipient.address = hit.address;
     } else if (!/^0x[0-9a-fA-F]{40}$/.test(intent.recipient.value || "")) {
       problems.push("malformed address");
+    } else {
+      // valid raw address (LLM path): stamp .address so the executor encodes
+      // a real address; without it ethers receives undefined for the `to`
+      // parameter and throws "unsupported addressable value"
+      intent.recipient.address = intent.recipient.value;
     }
     // "all" is a real amount: the executor resolves it to the full vault
     // balance of that token before policy evaluates it

@@ -36,6 +36,8 @@ const ARTIFACT = JSON.parse(readFileSync(resolve(HERE, "../contracts/AegisVault.
 
 const inFlight = new Map(); // userId -> Promise (serializes per user)
 let globalQueue = Promise.resolve(); // one provisioning at a time (agent-key nonce safety)
+let slowChainNoted = false; // one-time "this takes ~a minute" note on live chains
+const PROV_HOLDER = `prov-${process.pid}-${Math.random().toString(36).slice(2, 8)}`;
 
 /** Queue provisioning for a user. Returns the in-flight promise. */
 export function provisionUser(userId) {
@@ -117,7 +119,31 @@ async function runProvision(userId) {
 
   const log = (...a) => console.log(`  [provision ${userId.slice(0, 8)}]`, ...a);
 
+  // cross-INSTANCE claim: on serverless hosting the /me/provision stuck-kick
+  // (or a retry click) can queue a SECOND provisioner on another instance.
+  // Two writers racing on one vault is what produced the phantom
+  // "setTokenPolicy failed: NotOwner" error (one instance transferred
+  // ownership while the other's configure txs were still mining). The lease
+  // makes the loser exit quietly instead of clobbering state.
+  const claim = await store
+    .acquireLease(`provision:${userId}`, PROV_HOLDER, 240_000, 0)
+    .catch(() => ({ ok: true, release: async () => {}, degraded: true }));
+  if (claim && claim.ok === false) {
+    log("another instance is provisioning this user — standing down");
+    return { ok: true, busy: true };
+  }
+  const releaseClaim = async () => { try { await claim.release(); } catch { /* expired */ } };
+
   try {
+    // one-time note: on live chains a provision is 6+ txs at ~12s a block —
+    // the first signup taking ~a minute is EXPECTED, not a hang
+    if (!slowChainNoted) {
+      const info = await chain.chainInfo();
+      if (info.chainId !== 31337) {
+        log(`chain ${info.name}: blocks take ~12s, so a full provision (~6 txs) takes about a minute. This is normal.`);
+        slowChainNoted = true;
+      }
+    }
     // ── 1. gas stipend for the user's owner key ─────────────────────────────
     const stipend = ethers.parseEther(String(config.gasStipendEth));
     const userBal = await chain.provider.getBalance(ks.primaryAddress);
@@ -140,6 +166,8 @@ async function runProvision(userId) {
       vaultAddress = await vault.getAddress();
       await store.upsertVault({ userId, address: vaultAddress, deployTx: rc.hash, state: "deploying" });
       log(`vault deployed at ${vaultAddress} (tx ${rc.hash})`);
+      const deployLink = await chain.txLink(rc.hash).catch(() => null);
+      if (deployLink) log(`  explorer: ${deployLink}`);
     }
 
     const vault = new ethers.Contract(vaultAddress, ARTIFACT.abi, chain.provider);
@@ -166,7 +194,17 @@ async function runProvision(userId) {
       ];
       for (const [fn, args] of steps) {
         const r = await chain.send(vaultAsAgent, fn, ...args);
-        if (!r.ok) throw new Error(`${fn} failed: ${r.revert || r.hash}`);
+        if (!r.ok) {
+          // Another provisioner may have raced ahead of us (stuck-kick re-queue
+          // on another instance). If ownership already left the agent, the
+          // pipeline's GOAL is achieved — continue instead of erroring out.
+          const ownerNow = (await vault.owner()).toLowerCase();
+          if (ownerNow !== agentAddress.toLowerCase()) {
+            log(`${fn} lost a race with another provisioner — ownership already moved on; continuing`);
+            break;
+          }
+          throw new Error(`${fn} failed: ${r.revert || r.hash}`);
+        }
       }
       log("configured: USDC/ETH policies, swap venue, Savings payee");
     }
@@ -176,7 +214,16 @@ async function runProvision(userId) {
     if (!userIsOwner) {
       await setStatus(userId, "transferring");
       const r = await chain.send(vaultAsAgent, "transferOwnership", ks.primaryAddress);
-      if (!r.ok) throw new Error(`transferOwnership failed: ${r.revert || r.hash}`);
+      if (!r.ok) {
+        // same race tolerance as the configure steps: if the owner is already
+        // the user (a racing provisioner did it), the step's goal is met
+        const ownerNow = (await vault.owner()).toLowerCase();
+        if (ownerNow === ks.primaryAddress.toLowerCase()) {
+          log("transferOwnership lost the race — owner is already the user");
+        } else {
+          throw new Error(`transferOwnership failed: ${r.revert || r.hash}`);
+        }
+      }
       log(`ownership transferred to ${ks.primaryAddress}`);
     }
 
@@ -209,9 +256,20 @@ async function runProvision(userId) {
     });
     return { ok: true, address: vaultAddress };
   } catch (err) {
-    const msg = String(err?.message || err).slice(0, 400);
+    let msg = String(err?.message || err).slice(0, 400);
+    // The one operational failure a hosted deployment actually hits: the
+    // operator pot (agent key) ran out of testnet ETH. Surface that plainly
+    // instead of an ethers internals dump — the fix is a faucet top-up, not code.
+    if (/insufficient funds|not enough|exceeds the balance|underpriced/i.test(msg)) {
+      msg =
+        "the operator pot (agent key) is out of testnet ETH, so provisioning stopped. " +
+        "Ask the operator to top the agent key up from a Sepolia faucet, then log in again — " +
+        `the pipeline resumes where it left off. (technical detail: ${msg.slice(0, 160)})`;
+    }
     await setStatus(userId, "error", { error: msg });
     console.error(`  [provision ${userId.slice(0, 8)}] ERROR: ${msg}`);
     return { ok: false, error: msg };
+  } finally {
+    await releaseClaim();
   }
 }

@@ -52,8 +52,8 @@ function SignupInner() {
   return (
     <div className="auth-page">
       <Link className="wordmark" href="/">
-        <span className="glyph">🛡</span>
-        <span className="name">Aegis<i className="dot">.</i></span>
+        <span className="glyph"><img src="/logo-mark.png" alt="" /></span>
+        <span className="name">aegis<b className="ai">Ai</b>Wallet</span>
       </Link>
       <div className="card auth-card">
         <h2>Create your account</h2>

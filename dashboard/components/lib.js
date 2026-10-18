@@ -98,6 +98,7 @@ export const DECISION_CLASS = {
   swap: "b-swap",
   query: "b-query",
   clarify: "b-clarify",
+  error: "b-reject", // broadcast FAILED — nothing moved; red so it can't be mistaken for execute
 };
 
 export function riskClass(score) {

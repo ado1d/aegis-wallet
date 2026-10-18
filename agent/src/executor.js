@@ -58,12 +58,41 @@ function recentDecisions(j, limit = 10) {
   return [];
 }
 
+/** Real tx hashes (66 hex chars). "dry-run" and null never match. */
+const REAL_HASH = /^0x[0-9a-fA-F]{64}$/;
+const HASH_IN_TEXT = /\b0x[0-9a-fA-F]{64}\b/g;
+
+/** Append explorer links to any reply that carries a real transaction. Covers
+ *  every decision site at once (execute/swap/queue/reject + revert's inline
+ *  hashes) and never throws: link decoration must not fail a decision. On
+ *  chains without a known explorer this is a no-op. Exported for tests. */
+export async function appendExplorerLinks(decision) {
+  try {
+    if (!decision?.explanation) return;
+    const found = [];
+    const push = (h) => {
+      const s = String(h);
+      if (REAL_HASH.test(s) && !found.includes(s)) found.push(s);
+    };
+    Object.values(decision.tx || {}).forEach(push);
+    (String(decision.explanation).match(HASH_IN_TEXT) || []).forEach(push);
+    if (!found.length) return;
+    const info = await chain.chainInfo();
+    if (!info.explorer) return;
+    const links = found.map((h) => `${info.explorer.replace(/\/$/, "")}/tx/${h}`);
+    decision.explanation =
+      `${decision.explanation} View on the explorer: ${links.join(" and ")}.`;
+  } catch { /* decoration is best-effort */ }
+}
+
 /**
  * Process one natural-language command end-to-end, with conversation memory
  * bookkeeping around the pure pipeline: the user turn is recorded before
  * parsing (so the LLM history NEVER contains the current message twice) and
  * the assistant turn after; any decision that is not a clarify/query closes
- * the pending slot round (nothing half-remembered executes later).
+ * the pending slot round (nothing half-remembered executes later). Explorer
+ * links are appended AFTER the turns are recorded, so the LLM history stays
+ * clean of URLs while the user sees a clickable link in every reply.
  *
  * opts: {state?, codesizeMap?, quote?, chain?, journal?, convo?} —
  *        state/codesizeMap/quote: eval fixtures; chain/journal: per-user
@@ -78,6 +107,7 @@ export async function processCommand(text, opts = {}) {
     convo.recordTurn("assistant", decision.explanation, decision);
     if (decision.decision !== "clarify" && decision.decision !== "query") convo.clearPending();
   }
+  await appendExplorerLinks(decision);
   return decision;
 }
 
@@ -300,13 +330,38 @@ async function runCommand(text, opts = {}) {
     resolveAllAmount(intent, state, trace);
   }
 
+  // 4.6 ── recipient normalization: the executor encodes recipient.address
+  //        into agentExecute/submitForApproval for ethers. Raw-address
+  //        recipients carry the address in .value; if a producer ever forgets
+  //        to stamp .address, ethers receives undefined for `to` and throws
+  //        the cryptic "unsupported addressable value" INVALID_ARGUMENT (it
+  //        never even reaches the chain). The address is ALSO normalized to
+  //        EIP-55 here: users paste arbitrary casing, and the LLM regularly
+  //        echoes addresses with a mangled checksum ("bad address checksum" →
+  //        500 at the codesize screen). getAddress(lowercase) always yields
+  //        the canonical checksummed form. Stamped before the risk ensemble
+  //        (codesize screening) and policy read the recipient.
+  if (intent.action === "transfer" && intent.recipient) {
+    const raw = intent.recipient.address || intent.recipient.value;
+    if (typeof raw === "string" && /^0x[0-9a-fA-F]{40}$/.test(raw)) {
+      try {
+        const { ethers } = await import("ethers");
+        intent.recipient.address = ethers.getAddress(raw.toLowerCase());
+      } catch {
+        intent.recipient.address = raw; // never block a decision on normalization
+      }
+    }
+  }
+
   // 5 ── risk ensemble (5 families)
   let codesizeMap = opts.codesizeMap;
   if (!codesizeMap) {
     const addrs = intent.recipient?.address
       ? [intent.recipient.address]
       : [];
-    codesizeMap = addrs.length ? await c.codesizeMap(addrs) : {};
+    // codesize screening is best-effort: a chain hiccup must not 500 the
+    // whole command — the remaining risk families still evaluate
+    codesizeMap = addrs.length ? await c.codesizeMap(addrs).catch(() => ({})) : {};
   }
   const risk = await assessRisk({ text, intent, state, codesizeMap, hfToken: config.hfToken });
   trace.risk = risk;
@@ -337,7 +392,7 @@ async function runCommand(text, opts = {}) {
       ...trace,
       decision: "reject",
       rejectionCategory: Object.entries(REJECTION_CATEGORY).find(([, v]) => v === category)?.[0],
-      explanation: policy.explanation,
+      explanation: policy.explanation + (res.ok ? "" : " (Note: the on-chain audit log could not be written just now — the refusal stands, nothing was sent.)"),
       tx: { logRejection: res.hash },
       onchainRejectionLogged: !!res.ok,
       elapsedMs: Date.now() - started,
@@ -358,7 +413,7 @@ async function runCommand(text, opts = {}) {
       rejectionCategory: "RiskEngine",
       explanation:
         `REFUSED by the risk engine (score ${risk.score}/100): ${risk.signals.join("; ")}. ` +
-        `Refusal written to the on-chain rejection ledger.`,
+        `Refusal written to the on-chain rejection ledger.` + (res.ok ? "" : " (Note: the on-chain audit log could not be written just now — the refusal stands, nothing was sent.)"),
       tx: { logRejection: res.hash },
       onchainRejectionLogged: !!res.ok,
       elapsedMs: Date.now() - started,
@@ -415,6 +470,21 @@ async function runCommand(text, opts = {}) {
           token.address, intent.recipient.address, base, riskScore, rationale
         );
     const queuedId = res.receipt ? c.queuedIdFromReceipt(res.receipt) : null;
+    if (!res.ok) {
+      // nothing was queued — the owner cannot approve a proposal that does not
+      // exist. Report the failure honestly instead of "Queued for the owner".
+      const decision = {
+        ...trace,
+        decision: "error",
+        explanation:
+          `${policy.explanation} BROADCAST FAILED — nothing was queued and nothing moved. ` +
+          `Reason: ${res.revert || "the transaction could not be mined"}. Please try again in a moment.`,
+        tx: { submitForApproval: null, error: res.revert || "send failed" },
+        elapsedMs: Date.now() - started,
+      };
+      append({ type: "decision", ...decision });
+      return decision;
+    }
     const decision = {
       ...trace,
       decision: "queue",
@@ -449,7 +519,7 @@ async function runCommand(text, opts = {}) {
         decision: "reject",
         explanation:
           `The off-chain mirror said ALLOW but the chain disagreed: pre-flight simulation reverted: ${pre.revert}. ` +
-          `Logged for audit. (The mirror and the chain must never silently diverge.)`,
+          `Logged for audit. (The mirror and the chain must never silently diverge.)` + (res.ok ? "" : " (Note: the audit log tx itself could not be mined just now — the refusal stands, nothing was sent.)"),
         tx: { logRejection: res.hash },
         elapsedMs: Date.now() - started,
       };
@@ -462,6 +532,22 @@ async function runCommand(text, opts = {}) {
           c.vaultAsAgent, "agentExecute",
           token.address, intent.recipient.address, base, intent.rationale
         );
+    if (!res.ok) {
+      // the broadcast failed (replaced / reverted / key busy). NOTHING moved —
+      // say so. The old code still said "Executed autonomously" here, which
+      // lied to the user about their money (seen live 2026-10-18).
+      const decision = {
+        ...trace,
+        decision: "error",
+        explanation:
+          `${policy.explanation} BROADCAST FAILED — nothing was sent and no funds left your vault. ` +
+          `Reason: ${res.revert || "the transaction could not be mined"}. Please try again in a moment.`,
+        tx: { agentExecute: null, error: res.revert || "send failed" },
+        elapsedMs: Date.now() - started,
+      };
+      append({ type: "decision", ...decision });
+      return decision;
+    }
     const decision = {
       ...trace,
       decision: "execute",
@@ -505,6 +591,19 @@ async function runCommand(text, opts = {}) {
           c.vaultAsAgent, "agentSwap",
           sellTok.address, tokens[intent.buyToken].address, sellBase, BigInt(q.minOutBase), intent.rationale
         );
+    if (!res.ok) {
+      const decision = {
+        ...trace,
+        decision: "error",
+        explanation:
+          `${policy.explanation} BROADCAST FAILED — the swap did not happen and no funds moved. ` +
+          `Reason: ${res.revert || "the transaction could not be mined"}. Please try again in a moment.`,
+        tx: { agentSwap: null, error: res.revert || "send failed" },
+        elapsedMs: Date.now() - started,
+      };
+      append({ type: "decision", ...decision });
+      return decision;
+    }
     const decision = {
       ...trace,
       decision: "swap",

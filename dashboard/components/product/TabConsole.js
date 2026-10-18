@@ -13,7 +13,7 @@ import { TxLink } from "./bits.js";
 const SUGGESTIONS = [
   "Move 100 USDC to savings",
   "Pay landlord 200 USDC",
-  "Swap 200 USDC to ETH",
+  "Swap 50 USDC to ETH",
   "How much have I spent today?",
 ];
 
@@ -109,7 +109,7 @@ export default function TabConsole({ me, onNavigate, pending }) {
         <div className="chat-inputrow">
           <input
             value={input}
-            placeholder='e.g. "move 100 dollars to savings"; any language works'
+            placeholder='e.g. "move 100 dollars to savings"; other languages work too'
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && send(input)}
             disabled={busy}
@@ -121,7 +121,8 @@ export default function TabConsole({ me, onNavigate, pending }) {
           </button>
         </div>
         <p className="chat-disclaimer">
-          Testnet play money. Requests over your caps land in Approvals instead of executing.
+          Testnet play money. Over the per-transaction cap it waits for your
+          approval; over the daily cap it refuses.
         </p>
       </div>
     </div>
@@ -143,6 +144,16 @@ function AgentBubble({ m, explorer, whitelist }) {
   const recipient = intent.recipient?.address || intent.recipient?.value || intent.recipient;
   const rLabel = recipient ? labelFor(recipient, whitelist) : null;
   const clarify = intent.action === "clarify" && intent.clarify;
+  // every real tx hash in this decision (reply text included — revert lists
+  // its cancellation hashes inline) becomes a prominent explorer link row
+  const txHashes = [];
+  const seenTx = new Set();
+  const addHash = (h) => {
+    const s = String(h || "");
+    if (/^0x[0-9a-fA-F]{64}$/.test(s) && !seenTx.has(s)) { seenTx.add(s); txHashes.push(s); }
+  };
+  Object.values(dTx).forEach(addHash);
+  (String(d.explanation || "").match(/\b0x[0-9a-fA-F]{64}\b/g) || []).forEach(addHash);
 
   return (
     <div className="chat-row agent">
@@ -158,6 +169,14 @@ function AgentBubble({ m, explorer, whitelist }) {
         </div>
 
         <div>{clarify ? clarify : d.explanation}</div>
+
+        {explorer && txHashes.length ? (
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 3, alignItems: "flex-start" }}>
+            {txHashes.map((h) => (
+              <TxLink key={h} hash={h} explorer={explorer} label="tx:" />
+            ))}
+          </div>
+        ) : null}
 
         <details className="chat-trace">
           <summary>decision trace: what Aegis understood, checked and did</summary>

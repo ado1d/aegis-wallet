@@ -20,7 +20,7 @@ if [[ "${SEPOLIA:-0}" == "1" ]]; then
 ── Hosted (Sepolia) nightly reset checklist ──────────────────────────────
 1.  cd contracts && OWNER_KEY=0x… AGENT_KEY=0x… SEPOLIA_RPC_URL=… \
         forge script script/Deploy.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast --slow
-2.  Fund the new vault + whitelist the demo recipients (see INSTRUCTIONS.md Part D)
+2.  Fund the new vault + whitelist the demo recipients
 3.  Update agent/.env: VAULT_ADDRESS / VENUE_ADDRESS / USDC_ADDRESS
 4.  Restart the agent process (hosting supervisor auto-restart, or manually)
 5.  Verify:  AGENT_URL=https://… node dashboard/scripts/uptime-check.mjs

@@ -208,25 +208,23 @@ function WithdrawPanel({ me }) {
 function KeyDisclosure() {
   return (
     <Card title="How your keys are held" note="The plain-words version, no fine print.">
-      <ul className="notegrey" style={{ margin: 0, paddingLeft: 18 }}>
-        <li style={{ marginBottom: 6 }}>
-          Your keys are generated in your browser&apos;s session at signup. Aegis
-          staff never see them in plaintext.
-        </li>
-        <li style={{ marginBottom: 6 }}>
-          At rest they exist only as encrypted keystore files, locked with your
-          password and a server secret. Plaintext appears in memory solely for
-          the seconds it takes to sign your transactions.
-        </li>
-        <li style={{ marginBottom: 6 }}>
-          You can export them anytime from this tab and walk away. The vault is
-          yours, not ours.
-        </li>
-        <li>
-          This is a testnet deployment: the &ldquo;money&rdquo; is play money on
-          Sepolia. No real funds, ever.
-        </li>
-      </ul>
+      <p className="notegrey" style={{ margin: "0 0 10px" }}>
+        Your keys are generated in your browser&apos;s session at signup. Aegis
+        staff never see them in plaintext.
+      </p>
+      <p className="notegrey" style={{ margin: "0 0 10px" }}>
+        At rest they exist only as encrypted keystore files, locked with your
+        password and a server secret. Plaintext appears in memory solely for
+        the seconds it takes to sign your transactions.
+      </p>
+      <p className="notegrey" style={{ margin: "0 0 10px" }}>
+        You can export them anytime from this tab and walk away. The vault is
+        yours, not ours.
+      </p>
+      <p className="notegrey" style={{ margin: 0 }}>
+        This is a testnet deployment: the &ldquo;money&rdquo; is play money on
+        Sepolia. No real funds, ever.
+      </p>
     </Card>
   );
 }

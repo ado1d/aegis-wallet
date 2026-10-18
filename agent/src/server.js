@@ -52,6 +52,45 @@ import { provisionUser, resumePending, healStaleVaults } from "./provision.js";
 import { userChainContext, meView, recordDecision, recordOwnerOp, walletBalancesView, walletBalancesLine } from "./uservault.js";
 import { startKeepalive } from "./keepalive.js";
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Serverless hosting surface (v3.9 — Vercel)
+
+   The same zero-framework handler runs as a long-lived node:http server
+   (`startServer`, unchanged for local/Render runs) or as ONE Vercel Node
+   function (`api/index.js` rewrites every path here). Two hosting-specific
+   concerns are handled centrally:
+
+   bg(promise) — work that must outlive the HTTP response (vault
+   provisioning after signup). On a long-running server it is a detached
+   promise; on Vercel it is handed to waitUntil() so the invocation is not
+   frozen mid-pipeline. If the instance is still frozen/reaped, the pipeline
+   is idempotent and the next cold start's resumePending() + the
+   /me/provision stuck-kick finish the job.
+
+   bootForServerless() — idempotent cold-start boot (store init + banner +
+   background resume/self-heal). keepalive/event-polling are skipped on
+   Vercel: functions scale to zero, there is nothing to keep warm and no
+   long-lived loop to host.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+let _waitUntil = null;
+try {
+  ({ waitUntil: _waitUntil } = await import("@vercel/functions"));
+} catch {
+  /* package absent or not on Vercel — detached promises are fine locally */
+}
+
+/** Fire-and-forget work that must survive past the response. */
+export function bg(promise) {
+  const p = Promise.resolve(promise).catch((e) => {
+    console.error("  [bg]", String(e?.message || e).slice(0, 200));
+  });
+  if (_waitUntil) {
+    try { _waitUntil(p); } catch { /* outside a request scope — detached */ }
+  }
+  return p;
+}
+
 const json = (res, code, body) => {
   const payload = JSON.stringify(body, (k, v) => (typeof v === "bigint" ? v.toString() : v), 2);
   res.writeHead(code, {
@@ -112,7 +151,7 @@ async function routeProduct(req, res, url) {
     await store.saveKeystores({ userId: user.id, ...wallets });
     await store.upsertVault({ userId: user.id, state: "pending" });
     const { token, expiresAt } = await auth.createSession(user.id);
-    provisionUser(user.id); // async — dashboard polls /me/provision
+    bg(provisionUser(user.id)); // async — dashboard polls /me/provision; waitUntil keeps it alive on serverless
     await store.addActivity({ userId: user.id, kind: "system", decision: "signup", explanation: "Account created. Provisioning your on-chain vault…" });
     return json(res, 201, { token, expiresAt, user: { id: user.id, email: user.email, name: user.name } });
   }
@@ -153,7 +192,32 @@ async function routeProduct(req, res, url) {
 
   if (req.method === "GET" && url.pathname === "/me/provision") {
     const row = await store.getVault(user.id);
+    // serverless freeze guard: if a vault has sat mid-pipeline for >3 min with
+    // no in-flight work on THIS instance, the provisioning was frozen with its
+    // invocation — re-queue it (idempotent pipeline, deduped per user).
+    if (
+      row && row.state !== "done" && row.state !== "error" &&
+      Date.now() - new Date(row.updatedAt).getTime() > 180_000
+    ) {
+      bg(provisionUser(user.id));
+    }
     return json(res, 200, { vault: row || { state: "pending" } });
+  }
+
+  // explicit retry — the dashboard's "Retry provisioning" button. Safe because
+  // every pipeline step is idempotent (deploy checks code, configure checks
+  // ownership, seeding checks balances); a done vault short-circuits. Without
+  // this endpoint a vault in state "error" could NEVER be retried: the GET
+  // stuck-kick above deliberately skips errored rows, so the old button (a
+  // plain page reload) was a dead end.
+  if (req.method === "POST" && url.pathname === "/me/provision") {
+    const row = await store.getVault(user.id);
+    if (row?.state === "done") return json(res, 200, { vault: row });
+    if (row?.state === "error") {
+      await store.upsertVault({ userId: user.id, state: "pending", error: null });
+    }
+    bg(provisionUser(user.id));
+    return json(res, 202, { vault: await store.getVault(user.id) });
   }
 
   if (req.method === "POST" && url.pathname === "/me/command") {
@@ -163,11 +227,11 @@ async function routeProduct(req, res, url) {
     }
     const ctx = await userChainContext(user.id);
     if (!ctx) return json(res, 409, { error: "your vault is still being provisioned, try again in a moment" });
-    const { convoFor } = await import("./convo.js");
+    const { loadConvo, saveConvo } = await import("./convo.js");
     const decision = await processCommand(body.text, {
       chain: ctx,
       journal: (await import("./journal.js")).journalFor(user.id),
-      convo: convoFor(user.id),
+      convo: await loadConvo(user.id),
     });
     // balance questions deserve the FULL picture: vault caps/balances (from the
     // executor) + the user's own primary/savings wallets (product-layer context
@@ -179,6 +243,7 @@ async function routeProduct(req, res, url) {
       } catch { /* chain hiccup — answer without wallet line */ }
     }
     await recordDecision(user, decision);
+    await saveConvo(user.id); // persist turns + pending so multi-turn chat survives cold starts
     return json(res, 200, decision);
   }
 
@@ -400,6 +465,16 @@ async function route(req, res, url) {
       body.store = getStore().kind;
       body.stats = stats;
       body.agent = chain.agentWallet ? await chain.agentWallet.getAddress().catch(() => null) : null;
+      // operator fuel gauge: the provisioning pot that pays every user's
+      // stipend + vault gas. Visible here so "why do signups fail" is a
+      // one-curl diagnosis (dry pot = faucet the agent key).
+      if (chain.agentWallet) {
+        body.agentFuelEth = await chain.agentWallet
+          .getAddress()
+          .then((a) => chain.provider.getBalance(a))
+          .then((b) => ethers.formatEther(b))
+          .catch(() => null);
+      }
     }
     return json(res, 200, body);
   }
@@ -480,26 +555,66 @@ async function route(req, res, url) {
   json(res, 404, { error: `no route: ${req.method} ${url.pathname}` });
 }
 
+/** The shared request handler — used verbatim by the long-running server
+ *  AND by the Vercel function wrapper (api/index.js). Vercel rewrites keep
+ *  req.url at the original client path, so routing is identical on both. */
+export async function handleAegisRequest(req, res) {
+  const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
+      "access-control-allow-headers": "content-type,authorization",
+    });
+    return res.end();
+  }
+  try {
+    await route(req, res, url);
+  } catch (err) {
+    console.error(`[500] ${req.method} ${url.pathname}:`, String(err?.message || err).slice(0, 300));
+    json(res, 500, { error: String(err?.message || err).slice(0, 300) });
+  }
+}
+
+/** Idempotent cold-start boot for serverless (Vercel). Safe to call on every
+ *  request — only the first call does the work; concurrent callers await the
+ *  same promise. Skips keepalive/event-polling (no long-lived loop there). */
+let _bootPromise = null;
+export function bootForServerless() {
+  if (!_bootPromise) _bootPromise = _bootForServerlessInner();
+  return _bootPromise;
+}
+
+async function _bootForServerlessInner() {
+  if (config.productMode) await initStore(); // store must exist before traffic
+  console.log(`Aegis agent ${AGENT_VERSION} — serverless boot (${config.productMode ? "product" : "judge"} mode)`);
+  if (config.productMode) {
+    const info = await chain.chainInfo().catch(() => null);
+    if (info) console.log(`  chain   : ${info.name} (id ${info.chainId})  explorer: ${info.explorer || "none"}`);
+    console.log(`  store   : ${getStore().kind === "pg" ? "postgres" : "IN-MEMORY (DATABASE_URL not set!)"}`);
+    console.log(
+      `  intent  : ${config.llmProviderResolved}` +
+      `${config.llmProviderResolved !== "rules" ? `  model: ${config.llmModel}` : "  (deterministic parser)"}`
+    );
+    // resume/self-heal must never block the first request; on Vercel they are
+    // handed to waitUntil so the invocation stays alive until they finish
+    bg(resumePending().then((n) => { if (n) console.log(`  resumed : ${n} pending provision(s)`); return n; }));
+    bg(healStaleVaults().catch((e) => {
+      console.warn(`  [self-heal] sweep skipped: ${String(e?.message || e).slice(0, 120)}`);
+      return 0;
+    }).then((n) => { if (n > 0) console.log(`  self-heal: ${n} vault(s) re-provisioning`); return n; }));
+    llmPreflight().catch(() => {});
+  }
+  if (configWarnings.length) {
+    for (const w of configWarnings) console.log(`  [warn] ${w}`);
+  }
+  return true;
+}
+
 export async function startServer() {
   if (config.productMode) await initStore(); // store must exist before traffic
 
-  const server = createServer(async (req, res) => {
-    const url = new URL(req.url, `http://${req.headers.host || "localhost"}`);
-    if (req.method === "OPTIONS") {
-      res.writeHead(204, {
-        "access-control-allow-origin": "*",
-        "access-control-allow-methods": "GET,POST,DELETE,OPTIONS",
-        "access-control-allow-headers": "content-type,authorization",
-      });
-      return res.end();
-    }
-    try {
-      await route(req, res, url);
-    } catch (err) {
-      console.error(`[500] ${req.method} ${url.pathname}:`, String(err?.message || err).slice(0, 300));
-      json(res, 500, { error: String(err?.message || err).slice(0, 300) });
-    }
-  });
+  const server = createServer(handleAegisRequest);
 
   server.listen(config.port, config.host, async () => {
     console.log(`Aegis agent ${AGENT_VERSION} listening on http://${config.host}:${config.port}`);
@@ -523,7 +638,7 @@ export async function startServer() {
       });
       if (healed > 0) console.log(`  self-heal: ${healed} vault(s) lost their code (chain reset) — re-provisioning`);
       const selfUrl = process.env.RENDER_EXTERNAL_URL || `http://127.0.0.1:${config.port}`;
-      startKeepalive(selfUrl);
+      if (!process.env.VERCEL) startKeepalive(selfUrl);
     } else {
       console.log(`  vault   : ${config.vault}`);
       console.log(`  venue   : ${config.venue}`);

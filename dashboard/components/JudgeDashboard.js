@@ -61,11 +61,11 @@ export default function JudgeDashboard() {
     <div className="shell">
       <header className="header">
         <div className="brand">
-          <div className="mark">A</div>
+          <div className="mark"><img src="/logo-mark.png" alt="" /></div>
           <div>
-            <h1>AEGIS WALLET</h1>
+            <h1>aegisAiWallet</h1>
             <div className="sub">
-              AI as a Financial Participant · a guarded autonomous wallet · Checkpoint 3
+              Agent blockchain wallet · a guarded autonomous wallet · Checkpoint 3
             </div>
           </div>
         </div>

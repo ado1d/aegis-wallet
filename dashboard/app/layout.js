@@ -1,9 +1,14 @@
 import "./globals.css";
 
 export const metadata = {
-  title: "Aegis Wallet Dashboard",
+  metadataBase: new URL("https://aegis-dashboard-rosy.vercel.app"),
+  title: "aegisAiWallet",
   description:
-    "AI as a Financial Participant: a guarded autonomous wallet. Natural language in, policy-checked on-chain action out.",
+    "An AI agent that moves money for you, only inside the guardrails you set on-chain. Sepolia testnet.",
+};
+
+export const viewport = {
+  themeColor: "#0c0a16",
 };
 
 export default function RootLayout({ children }) {

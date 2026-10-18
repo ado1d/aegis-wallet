@@ -26,6 +26,7 @@ function StartInner() {
   const [chain, setChain] = useState("Sepolia");
   const [meErr, setMeErr] = useState(null);
   const [halt, setHalt] = useState(false); // stop polling once terminal
+  const [retrying, setRetrying] = useState(false);
 
   const provision = usePoll(() => apiAuth("/me/provision"), 2000, !halt);
   const vault = provision.data?.vault || {};
@@ -34,6 +35,22 @@ function StartInner() {
   useEffect(() => {
     if ((state === "done" || state === "error") && !halt) setHalt(true);
   }, [state, halt]);
+
+  // Real retry: ask the backend to re-run the (idempotent) pipeline. A plain
+  // reload can't do it — the GET stuck-kick deliberately skips errored rows,
+  // so without this POST a failed provision used to be a dead end.
+  const retry = async () => {
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      await apiAuth("/me/provision", { method: "POST" });
+      setHalt(false); // resume polling — the pipeline is running again
+    } catch (e) {
+      setMeErr(e?.message || "retry failed");
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   // one-shot /me for the friendly chain name
   useEffect(() => {
@@ -67,8 +84,8 @@ function StartInner() {
   return (
     <div className="ob-page">
       <span className="wordmark">
-        <span className="glyph">🛡</span>
-        <span className="name">Aegis<i className="dot">.</i></span>
+        <span className="glyph"><img src="/logo-mark.png" alt="" /></span>
+        <span className="name">aegis<b className="ai">Ai</b>Wallet</span>
       </span>
 
       {state === "error" ? (
@@ -79,11 +96,11 @@ function StartInner() {
             {vault.error || "unknown error"}
           </div>
           <p className="notegrey" style={{ marginBottom: 14 }}>
-            This is usually a temporary network issue on the testnet. Reload this
-            page to retry; every step is idempotent and picks up where it left off.
+            Every step is idempotent and picks up where it left off, so retrying
+            is always safe. Your funds and keys are not affected.
           </p>
-          <button className="btn primary" onClick={() => window.location.reload()}>
-            Retry provisioning
+          <button className="btn primary" onClick={retry} disabled={retrying}>
+            {retrying ? "Retrying…" : "Retry provisioning"}
           </button>
         </div>
       ) : state === "done" ? (
@@ -99,7 +116,7 @@ function StartInner() {
             </div>
           ) : null}
           <button className="btn primary" style={{ fontSize: 14, padding: "12px 26px" }} onClick={() => router.push("/app")}>
-            Open Aegis →
+            Open your wallet →
           </button>
         </div>
       ) : (

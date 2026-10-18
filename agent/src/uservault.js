@@ -32,7 +32,10 @@ export async function userChainContext(userId) {
     await chain.resetNonceManagers().catch(() => {});
     await getStore().upsertVault({ userId, state: "deploying", error: null });
     const heal = provisionUser(userId); // deduped per user, serialized globally
-    await Promise.race([heal, new Promise((r) => setTimeout(r, 30_000))]);
+    // anvil re-provisions in ~1s; Sepolia needs 6+ txs at ~12s a block, so the
+    // bound is chain-aware (30s local, 180s live, PROVISION_TIMEOUT_MS wins)
+    const boundMs = await chain.provisionBoundMs().catch(() => 30_000);
+    await Promise.race([heal, new Promise((r) => setTimeout(r, boundMs))]);
     row = await getStore().getVault(userId);
     if (!row?.address || (await chain.provider.getCode(row.address)) === "0x") return null;
   }
@@ -205,6 +208,15 @@ export async function recordDecision(user, decision) {
       userId: user.id,
       kind: "blocked",
       title: "Aegis blocked a request",
+      body: decision.explanation?.slice(0, 300) || "",
+    });
+  } else if (decision.decision === "error") {
+    // honest failure: the broadcast did NOT happen — the user must know their
+    // payment did not go through, not discover it later from a missing receipt
+    await store.addNotification({
+      userId: user.id,
+      kind: "blocked",
+      title: "A transfer could not be broadcast",
       body: decision.explanation?.slice(0, 300) || "",
     });
   }

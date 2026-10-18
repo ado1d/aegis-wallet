@@ -52,9 +52,9 @@ function AppInner() {
   return (
     <div className="pa-shell">
       <header className="pa-header">
-        <Link className="wordmark" href="/" aria-label="Aegis home">
-          <span className="glyph">🛡</span>
-          <span className="name">Aegis<i className="dot">.</i></span>
+        <Link className="wordmark" href="/" aria-label="aegisAiWallet home">
+          <span className="glyph"><img src="/logo-mark.png" alt="" /></span>
+          <span className="name">aegis<b className="ai">Ai</b>Wallet</span>
         </Link>
         <AgentChip name={data?.state?.agentStatusName || (provisioning ? "…" : undefined)} />
         <div style={{ flex: 1 }} />

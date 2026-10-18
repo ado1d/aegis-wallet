@@ -37,8 +37,8 @@ export default function Landing() {
     <div className="lp-page">
       <header className="lp-header">
         <span className="wordmark">
-          <span className="glyph">🛡</span>
-          <span className="name">Aegis<i className="dot">.</i></span>
+          <span className="glyph"><img src="/logo-mark.png" alt="" /></span>
+          <span className="name">aegis<b className="ai">Ai</b>Wallet</span>
         </span>
         <nav aria-label="main">
           <Link className="link" href="/login">Log in</Link>
@@ -49,7 +49,10 @@ export default function Landing() {
       <main className="lp-main">
         <section className="lp-hero">
           <div className="badge-line">
-            <span className="dotok" /> Sepolia testnet · play money, zero risk
+            <span className="dotok" /> Sepolia testnet · play money
+          </div>
+          <div className="lp-hero-logo">
+            <img src="/logo.png" alt="aegisAiWallet, agent blockchain wallet" />
           </div>
           <h1 className="lp-h1">
             Your money. Your rules. <em>Enforced by code.</em>
@@ -67,7 +70,7 @@ export default function Landing() {
         </section>
 
         <section className="lp-section" aria-label="features">
-          <h2>Built for the age of AI agents</h2>
+          <h2>What you get</h2>
           <p className="lede">Convenience of an assistant, safety of a smart contract.</p>
           <div className="lp-features">
             <div className="lp-feature">
@@ -92,8 +95,8 @@ export default function Landing() {
               <div className="glyph">🔑</div>
               <h3>You hold the keys</h3>
               <p>
-                Your vault, your key: export it anytime. The agent is only a
-                bounded operator that can never outvote the contract.
+                Your vault, your key: export it anytime. The agent can only act
+                inside the limits the contract allows.
               </p>
             </div>
           </div>
@@ -116,15 +119,15 @@ export default function Landing() {
             <div className="step-card">
               <div className="num">3</div>
               <h3>Chat</h3>
-              <p>Tell Aegis what you need. Watch it act, or refuse on the record, when a rule would break.</p>
+              <p>Tell Aegis what you need. It acts when your rules allow, and refuses on the record when they don&apos;t.</p>
             </div>
           </div>
         </section>
       </main>
 
       <footer className="lp-footer">
-        Aegis Wallet · 2026 Shenzhen International FinTech Competition · built on
-        Sepolia, no real funds, ever.
+        aegisAiWallet · agent blockchain wallet · 2026 Shenzhen International
+        FinTech Competition · Sepolia testnet, no real funds.
       </footer>
       <Toasts />
     </div>

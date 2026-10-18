@@ -54,6 +54,30 @@ export const VAULT_ABI = [
   "event AgentRevoked(uint256 at)",
   "event Deposited(address indexed token, address indexed from, uint256 amount)",
   "event OwnerWithdrawal(address indexed token, address indexed to, uint256 amount)",
+  // ── custom errors (so explainRevert can decode the REAL revert reason —
+  //    without these every revert surfaces as "unknown custom error") ────────
+  "error Aegis__NotOwner(address caller)",
+  "error Aegis__NotAgent(address caller)",
+  "error Aegis__AgentPaused()",
+  "error Aegis__AgentRevoked()",
+  "error Aegis__InvalidRecipient()",
+  "error Aegis__InvalidAmount()",
+  "error Aegis__RecipientNotWhitelisted(address recipient)",
+  "error Aegis__ExceedsPerTxLimit(address token, uint256 requested, uint256 cap)",
+  "error Aegis__ExceedsDailyLimit(address token, uint256 spent, uint256 requested, uint256 cap)",
+  "error Aegis__InsufficientBalance(address token, uint256 available, uint256 needed)",
+  "error Aegis__EthTransferFailed()",
+  "error Aegis__InvalidAgentStatus(uint8 current)",
+  "error Aegis__InvalidTxId(uint256 id)",
+  "error Aegis__TxNotQueued(uint256 id, uint8 current)",
+  "error Aegis__TxNotApproved(uint256 id, uint8 current)",
+  "error Aegis__TxNotRejectable(uint256 id, uint8 current)",
+  "error Aegis__AmountTooLargeToMeter(uint256 amount)",
+  "error Aegis__DailyWindowUncertain(address token)",
+  "error Aegis__SwapVenueNotSet()",
+  "error Aegis__InvalidSwap(address sellToken, address buyToken)",
+  "error Aegis__SwapBelowMinOut(uint256 received, uint256 minimum)",
+  "error Aegis__NotAuthorizedToLog(address caller)",
 ];
 
 export const ERC20_ABI = [

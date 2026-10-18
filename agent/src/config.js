@@ -31,9 +31,9 @@ const env = { ...loadEnvFile(resolve(AGENT_ROOT, ".env")), ...process.env };
 
 // Build identity — printed in the startup banner and served by /health so a
 // console screenshot instantly answers "which build is this?". Bump on every
-// repackaged zip (v3.7 = conversation memory: multi-turn slot filling,
-// full-balance "all"/"sob" amounts, revert/cancel, malformed-address calls).
-export const AGENT_VERSION = "v3.7";
+// repackaged zip (v3.9 = hosted deployment: serverless surface (Vercel),
+// Postgres-backed conversation memory, operator fuel gauge in /health).
+export const AGENT_VERSION = "v3.9.3"; // v3.9.3 = honest broadcast failures, cross-instance tx leases, real retry endpoint
 
 // Values that fail to parse fall back to their default WITH a loud warning
 // instead of poisoning the pipeline as NaN. (CP2 shipped a parser that did
@@ -68,6 +68,15 @@ export const config = {
   vault: env.VAULT_ADDRESS || "",
   venue: env.VENUE_ADDRESS || "",
   usdc: env.USDC_ADDRESS || "",
+
+  // Block explorer for tx/address links in agent replies. Empty = derive from
+  // the chain id (sepolia/mainnet/amoy are known; see chain.js chainInfo).
+  // Set it explicitly for any other chain, e.g. EXPLORER_URL=https://base-sepolia.basescan.org
+  explorerUrl: env.EXPLORER_URL || "",
+  // Bound for the request-path self-heal wait (and a guide for provisioning on
+  // slow chains). 0 = auto: 30s on anvil (instant blocks), 180s on live chains
+  // where a full re-provision is 6+ transactions at ~12s each.
+  provisionTimeoutMs: num("PROVISION_TIMEOUT_MS", 0),
 
   ownerKey: env.OWNER_KEY || "",
   agentKey: env.AGENT_KEY || "",
