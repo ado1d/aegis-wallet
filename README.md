@@ -48,6 +48,19 @@ chain disagrees with the off-chain mirror, the action is refused and logged.
 Every decision lands in an audit journal, the activity feed, and the vault's
 own event log.
 
+## Help & guidance layer
+
+The dashboard ships a floating help assistant (the "?" button, every tab).
+It answers questions about Aegis, the user's own setup, or crypto basics —
+clearly, simply, and in the user's own language. It is the advisory twin of
+the executor: `POST /me/help` can never parse an intent, execute, or queue
+anything, by construction. Answers are grounded in a live facts snapshot
+(the user's real caps, balances, payees, recent refusals, oracle price), so
+"why was my payment blocked?" gets the real reason instead of a guess. An
+LLM writes the answer when a key is configured; a curated, facts-aware FAQ
+is the deterministic floor under it, so Help stays useful with the LLM
+down or budgetless — the same philosophy as the rules parser.
+
 ## Repository layout
 
 ```
