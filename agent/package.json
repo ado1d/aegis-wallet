@@ -16,6 +16,7 @@
     "selfheal": "node scripts/v35-selfheal-test.mjs",
     "check:llm": "node scripts/check-llm.mjs",
     "test:convo": "node scripts/test-conversation.js",
+    "test:venue": "node scripts/test-swap-venue.js",
     "test:multilingual": "node scripts/test-multilingual.mjs",
     "test:llm": "node scripts/test-llm-network.js",
     "test:breaker": "node scripts/test-llm-breaker.js"
