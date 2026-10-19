@@ -33,7 +33,7 @@ const env = { ...loadEnvFile(resolve(AGENT_ROOT, ".env")), ...process.env };
 // console screenshot instantly answers "which build is this?". Bump on every
 // repackaged zip (v3.9 = hosted deployment: serverless surface (Vercel),
 // Postgres-backed conversation memory, operator fuel gauge in /health).
-export const AGENT_VERSION = "v3.9.6"; // v3.9.6 = refusal UX: honest over-cap advice, audit-entry note, working-direction hint; v3.9.5 = swap guardrails: Chainlink price verification, too-large refusal, review-band swap fix
+export const AGENT_VERSION = "v3.9.7"; // v3.9.7 = help assistant: POST /me/help guidance route, live-facts LLM persona + deterministic FAQ fallback; v3.9.6 = refusal UX: honest over-cap advice, audit-entry note, working-direction hint; v3.9.5 = swap guardrails: Chainlink price verification, too-large refusal, review-band swap fix
 
 // Values that fail to parse fall back to their default WITH a loud warning
 // instead of poisoning the pipeline as NaN. (CP2 shipped a parser that did

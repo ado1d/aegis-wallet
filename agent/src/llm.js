@@ -46,7 +46,7 @@ async function proxyDispatcher() {
 }
 
 /** fetch that transparently honors the configured proxy, if any. */
-async function llmFetch(url, opts = {}) {
+export async function llmFetch(url, opts = {}) {
   const dispatcher = await proxyDispatcher();
   return fetch(url, dispatcher ? { ...opts, dispatcher } : opts);
 }
@@ -146,7 +146,7 @@ function isReasoningModel(model) {
 // model is a reasoning family that forbids overriding it. For those the
 // request also pins reasoning_effort "low" — intent parsing is extraction,
 // not deep thought, and medium effort made gpt-5-nano take ~10s per command.
-function llmPayload(model, messages, { reasoningEffort = false } = {}) {
+export function llmPayload(model, messages, { reasoningEffort = false } = {}) {
   const payload = { model, temperature: 0, messages };
   if (isReasoningModel(model)) {
     delete payload.temperature;

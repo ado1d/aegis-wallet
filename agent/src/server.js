@@ -24,6 +24,7 @@
 //   GET  /me                                  -> profile + vault + balances
 //   GET  /me/provision                        -> live provisioning status
 //   POST /me/command {text}                   -> decision trace (user's vault)
+//   POST /me/help {text,history?}              -> guidance ONLY, never acts
 //   GET  /me/approvals | /me/rejections       -> user's queue / ledger
 //   POST /me/approvals/{id}/approve|reject    -> owner ops via embedded wallet
 //   POST /me/payees {label,address,category}  -> whitelist a payee (owner op)
@@ -50,6 +51,7 @@ import { initStore, getStore } from "./store.js";
 import * as auth from "./auth.js";
 import { provisionUser, resumePending, healStaleVaults } from "./provision.js";
 import { userChainContext, meView, recordDecision, recordOwnerOp, walletBalancesView, walletBalancesLine } from "./uservault.js";
+import { helpAnswer, sanitizeHelpHistory } from "./help.js";
 import { startKeepalive } from "./keepalive.js";
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -245,6 +247,19 @@ async function routeProduct(req, res, url) {
     await recordDecision(user, decision);
     await saveConvo(user.id); // persist turns + pending so multi-turn chat survives cold starts
     return json(res, 200, decision);
+  }
+
+  // Guidance layer — answers questions about Aegis, the user's setup, or
+  // crypto basics. Advisory ONLY: this route never parses intents, never
+  // executes, never queues. LLM answer grounded in live facts; curated FAQ
+  // fallback keeps it useful when the LLM is down.
+  if (req.method === "POST" && url.pathname === "/me/help") {
+    const body = await readBody(req);
+    const text = String(body?.text ?? "").trim().slice(0, 400);
+    if (!text) return json(res, 400, { error: 'body must be {"text": "…"}' });
+    const history = sanitizeHelpHistory(body?.history);
+    const result = await helpAnswer({ user, text, history });
+    return json(res, 200, result);
   }
 
   if (req.method === "GET" && url.pathname === "/me/approvals") {
