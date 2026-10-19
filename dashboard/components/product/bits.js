@@ -4,6 +4,7 @@
 // and SSR-safe (localStorage/clipboard only touched in handlers/effects).
 
 import { useEffect, useRef, useState } from "react";
+import { QRCodeSVG } from "qrcode.react";
 import { shortHash, shortAddr, riskClass } from "../lib.js";
 
 /* ── clipboard with a fallback for non-secure contexts ─────────────────── */
@@ -121,6 +122,60 @@ export function Modal({ title, children, onClose, danger = false }) {
         {children}
       </div>
     </div>
+  );
+}
+
+/* ── QR code for an address (scan-to-fund from any mobile wallet) ──────── */
+
+function QrGlyph() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
+      <rect x="0" y="0" width="5" height="5" rx="1" />
+      <rect x="9" y="0" width="5" height="5" rx="1" />
+      <rect x="0" y="9" width="5" height="5" rx="1" />
+      <rect x="7.5" y="7.5" width="2" height="2" />
+      <rect x="11" y="8" width="2" height="2" />
+      <rect x="8" y="11" width="2" height="2" />
+      <rect x="12" y="12" width="1.5" height="1.5" />
+    </svg>
+  );
+}
+
+/** Renders a small QR button next to an address; clicking opens a modal with
+ *  a scannable QR (bare address — the format every wallet scanner accepts),
+ *  the full address, and a copy affordance. */
+export function AddressQr({ addr, label = "address" }) {
+  const [open, setOpen] = useState(false);
+  if (!addr) return null;
+  return (
+    <>
+      <button
+        type="button"
+        className="qr-btn"
+        onClick={() => setOpen(true)}
+        title={`show QR code for this ${label.toLowerCase()}`}
+        aria-label={`show QR code for this ${label.toLowerCase()}`}
+      >
+        <QrGlyph />
+      </button>
+      {open ? (
+        <Modal title={`${label} address`} onClose={() => setOpen(false)}>
+          <div className="m-body" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+            <div className="qr-card">
+              <QRCodeSVG value={addr} size={196} marginSize={0} />
+            </div>
+            <p className="mono" style={{ fontSize: 12, wordBreak: "break-all", textAlign: "center", margin: 0 }}>{addr}</p>
+            <p className="faint" style={{ fontSize: 11.5, textAlign: "center", margin: 0 }}>
+              scan with any wallet app to send funds to this address
+            </p>
+          </div>
+          <div className="m-actions" style={{ justifyContent: "center" }}>
+            <CopyText text={addr} display="copy address" />
+            <button className="btn" onClick={() => setOpen(false)}>Done</button>
+          </div>
+        </Modal>
+      ) : null}
+    </>
   );
 }
 

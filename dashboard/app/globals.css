@@ -577,6 +577,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .copytext:hover { border-color: var(--accent); }
 .copytext .copied { color: var(--faint); font-size: 10px; }
 .copytext .copied.show { color: var(--ok); }
+
+/* QR button + scannable QR card (white — QRs need light backgrounds to scan) */
+.qr-btn {
+  appearance: none; background: #0d0a1a; border: 1px solid var(--border-soft); color: var(--sky);
+  border-radius: 7px; width: 27px; height: 26px; display: inline-flex; align-items: center;
+  justify-content: center; cursor: pointer; flex: none; padding: 0;
+}
+.qr-btn:hover { border-color: var(--accent); }
+.qr-card { background: #fff; border-radius: 12px; padding: 12px; display: inline-block; line-height: 0; }
+
 .txlink { color: var(--sky); }
 .txlink:hover { text-decoration: underline; }
 .mono.dim { color: var(--dim); }

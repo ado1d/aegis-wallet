@@ -6,7 +6,7 @@ import { useState } from "react";
 import { apiAuth } from "../auth.js";
 import { fmtBase } from "../lib.js";
 import { Card, Spinner } from "../ui.js";
-import { AgentChip, CapMeter, CopyText, TxLink } from "./bits.js";
+import { AddressQr, AgentChip, CapMeter, CopyText, TxLink } from "./bits.js";
 import { toast } from "./toast.js";
 
 export default function TabHome({ me, onRun }) {
@@ -134,7 +134,14 @@ function WalletAccounts({ me }) {
           <div className="acct-row" key={r.k}>
             <span className="k">{r.k}</span>
             <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0, flex: 1 }}>
-              {r.addr ? <CopyText text={r.addr} /> : <span className="mono dim">provisioning…</span>}
+              {r.addr ? (
+                <span style={{ display: "inline-flex", gap: 6, alignItems: "center", minWidth: 0 }}>
+                  <CopyText text={r.addr} />
+                  <AddressQr addr={r.addr} label={r.k} />
+                </span>
+              ) : (
+                <span className="mono dim">provisioning…</span>
+              )}
               <span className="faint" style={{ fontSize: 11.5 }}>{r.note}</span>
             </div>
             <span
