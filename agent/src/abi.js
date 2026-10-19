@@ -85,11 +85,28 @@ export const ERC20_ABI = [
   "function symbol() view returns (string)",
   "function balanceOf(address) view returns (uint256)",
   "event Transfer(address indexed from, address indexed to, uint256 value)",
+  // OpenZeppelin v5 custom errors — these bubble up through the vault's
+  // ERC-20 calls (the venue pulls the sell asset from the vault and pays out
+  // the buy asset from its own inventory), so decoding them names an
+  // inventory shortfall instead of "unknown custom error"
+  "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+  "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
 ];
 
 export const VENUE_ABI = [
   "function quote(address sellToken, address buyToken, uint256 sellAmount) view returns (uint256)",
   "function setRate(address sellToken, address buyToken, uint256 num, uint256 den)",
+  // MockSwap's own reverts, mirrored from contracts/src/mocks/MockSwap.sol.
+  // Without these in any interface the agent knows, every venue failure
+  // surfaced as an opaque "unknown custom error": the pre-flight correctly
+  // rejected the doomed swap but could not say WHY. With them the revert
+  // names the real cause (e.g. MockSwap__EthPayoutFailed = the venue has no
+  // ETH inventory left to pay out). Keep in sync with the contract.
+  "error MockSwap__NotOwner(address caller)",
+  "error MockSwap__RateNotSet(address sellToken, address buyToken)",
+  "error MockSwap__BelowMinOut(uint256 outAmount, uint256 minOut)",
+  "error MockSwap__BadMsgValue(uint256 got, uint256 want)",
+  "error MockSwap__EthPayoutFailed()",
 ];
 
 /** RejectionCategory enum from AegisVault.sol — mirrored off-chain. */

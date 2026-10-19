@@ -560,11 +560,30 @@ async function runCommand(text, opts = {}) {
     return decision;
   }
 
-  //     swap: quote -> minOut -> agentSwap
+  //     swap: quote -> venue liquidity -> minOut -> agentSwap
   if (intent.action === "swap") {
-    const q = opts.quote
-      ? opts.quote(intent)
-      : await c.quoteSwap(intent.token, intent.buyToken, intent.amount);
+    let q;
+    try {
+      q = opts.quote
+        ? opts.quote(intent)
+        : await c.quoteSwap(intent.token, intent.buyToken, intent.amount);
+    } catch (err) {
+      // the quote itself refused (e.g. MockSwap__RateNotSet on a pair the
+      // venue owner never priced): a clean REJECT with the named error,
+      // not an opaque 500
+      const msg = String(err?.message || err).slice(0, 300);
+      const decision = {
+        ...trace,
+        decision: "reject",
+        rejectionCategory: "Balance",
+        explanation:
+          `Could not quote this swap: ${msg}.` +
+          (/RateNotSet/.test(msg) ? " The venue has no exchange rate for this pair yet; its owner must call setRate." : ""),
+        elapsedMs: Date.now() - started,
+      };
+      append({ type: "decision", ...decision });
+      return decision;
+    }
     trace.quote = q;
     const sellTok = tokens[intent.token];
     const sellBase = toBaseUnits(intent.amount, sellTok.decimals);
@@ -575,11 +594,21 @@ async function runCommand(text, opts = {}) {
           sellTok.address, tokens[intent.buyToken].address, sellBase, BigInt(q.minOutBase), intent.rationale
         );
     if (!pre.ok) {
+      const category = /BelowMinOut/.test(pre.revert)
+        ? "Slippage"
+        : /EthPayoutFailed|RateNotSet|InsufficientBalance/.test(pre.revert)
+          ? "Balance"
+          : "RiskEngine";
+      const hint = /EthPayoutFailed/.test(pre.revert)
+        ? " The venue has no ETH left to pay out and the automatic top-up did not complete; fund the agent key and retry."
+        : /RateNotSet/.test(pre.revert)
+          ? " The venue has no exchange rate for this pair yet; its owner must call setRate."
+          : "";
       const decision = {
         ...trace,
         decision: "reject",
-        rejectionCategory: pre.revert.includes("BelowMinOut") ? "Slippage" : "RiskEngine",
-        explanation: `Pre-flight simulation reverted: ${pre.revert}`,
+        rejectionCategory: category,
+        explanation: `Pre-flight simulation reverted: ${pre.revert}.${hint}`,
         elapsedMs: Date.now() - started,
       };
       append({ type: "decision", ...decision });

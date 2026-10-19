@@ -39,6 +39,14 @@ export const venue = config.venue ? new ethers.Contract(config.venue, VENUE_ABI,
 export const vaultAsAgent = agentWallet ? vault.connect(agentWallet) : null;
 export const vaultAsOwner = ownerWallet ? vault.connect(ownerWallet) : null;
 
+// decode interfaces for the swap-venue and plain ERC-20 error surfaces
+// (OpenZeppelin v5 custom errors bubble up through the vault's and the
+// venue's token calls, e.g. the venue failing to pay out USDC it does not
+// hold). Standalone rather than tied to the configured contracts so decoding
+// works the same in tests and when an address is not configured yet.
+const venueIface = new ethers.Interface(VENUE_ABI);
+const erc20Iface = new ethers.Interface(ERC20_ABI);
+
 const erc20Cache = {};
 export function erc20(address) {
   const a = address.toLowerCase();
@@ -135,13 +143,23 @@ export function explainRevert(err) {
     err?.data ||
     (typeof err?.shortMessage === "string" && err.shortMessage.includes("reverted") ? err.shortMessage : null);
   if (data && typeof data === "string" && data.startsWith("0x") && data.length >= 10) {
-    try {
-      const parsed = vault.interface.parseError(data);
-      if (parsed) {
-        const args = parsed.args.map((a) => (typeof a === "bigint" ? ethers.formatUnits(a, 0) : String(a)));
-        return `${parsed.name}(${args.join(", ")})`;
-      }
-    } catch { /* fall through */ }
+    // try every interface the agent knows — the vault, then the swap venue
+    // (venue reverts bubble up through the vault's agentSwap call, e.g.
+    // MockSwap__EthPayoutFailed when the venue's ETH inventory ran dry), then
+    // the ERC-20 error surface. All of this used to surface as an opaque
+    // "unknown custom error".
+    for (const iface of [vault?.interface, venueIface, erc20Iface].filter(Boolean)) {
+      try {
+        const parsed = iface.parseError(data);
+        if (parsed) {
+          const args = parsed.args.map((a) => (typeof a === "bigint" ? ethers.formatUnits(a, 0) : String(a)));
+          return `${parsed.name}(${args.join(", ")})`;
+        }
+      } catch { /* try the next interface */ }
+    }
+    // no known interface matched: keep the 4-byte selector visible so the
+    // revert stays traceable instead of a bare "unknown custom error"
+    return `unknown custom error ${data.slice(0, 10)} (data ${data.slice(0, 74)}${data.length > 74 ? "..." : ""})`;
   }
   return err?.shortMessage || err?.reason || String(err?.message || err).slice(0, 200);
 }
@@ -371,7 +389,15 @@ export async function quoteSwap(sellSymbol, buySymbol, amountHuman) {
   const sell = tokens[sellSymbol], buy = tokens[buySymbol];
   if (!sell || !buy) throw new Error("unknown token pair");
   const sellBase = toBaseUnits(amountHuman, sell.decimals);
-  const outBase = await venue.quote(sell.address, buy.address, sellBase);
+  let outBase;
+  try {
+    outBase = await venue.quote(sell.address, buy.address, sellBase);
+  } catch (err) {
+    // a quote revert is a real answer (e.g. MockSwap__RateNotSet on a pair
+    // the venue owner never priced) — surface the named error instead of an
+    // opaque 500
+    throw new Error(`the venue refused to quote this pair: ${explainRevert(err)}`);
+  }
   // slippage feeds BigInt() — clamp a bad config value to the default instead
   // of crashing the swap path with BigInt(NaN)
   const bps =
