@@ -422,11 +422,38 @@ async function runCommand(text, opts = {}) {
     return decision;
   }
 
+  //     review-band swaps: the risk engine wants a human to look, but the
+  //     vault's approval queue can only hold TRANSFERS (token, recipient,
+  //     amount) — a swap has no recipient to queue. v3.9.4 routed these into
+  //     the transfer-queue path, which read intent.recipient.address on a
+  //     swap intent (undefined) and crashed the whole command route. Refuse
+  //     cleanly instead: nothing moves, the user hears why, the ledger notes it.
+  if (intent.action === "swap" && risk.band === "review") {
+    const rh = await reasonHash(`risk review refusal (swap): ${risk.signals.join("; ")}`);
+    const res = config.dryRun
+      ? { hash: "dry-run", ok: true }
+      : await c.send(c.vaultAsAgent, "logRejection", rh, REJECTION_CATEGORY.RiskEngine);
+    const decision = {
+      ...trace,
+      decision: "reject",
+      rejectionCategory: "RiskEngine",
+      explanation:
+        `HELD by the risk engine (score ${risk.score}/100): ${risk.signals.join("; ")}. ` +
+        `Swaps have no human-approval queue in the vault contract, so I refuse rather than move money a human should double-check. ` +
+        `Nothing was swapped. Try a smaller amount, wait a bit if you have been moving funds fast, or perform this swap from your owner wallet.` +
+        (res.ok ? "" : " (Note: the on-chain audit log could not be written just now — the refusal stands, nothing was sent.)"),
+      tx: { logRejection: res.hash },
+      onchainRejectionLogged: !!res.ok,
+      elapsedMs: Date.now() - started,
+    };
+    append({ type: "decision", ...decision });
+    return decision;
+  }
+
   //     over-cap transfers & review-band risk -> human approval queue
   const needsQueue =
     (intent.action === "transfer" && policy.outcome === "QUEUE") ||
-    (intent.action === "transfer" && risk.band === "review") ||
-    (intent.action === "swap" && risk.band === "review");
+    (intent.action === "transfer" && risk.band === "review");
 
   if (intent.action === "swap" && policy.outcome === "QUEUE") {
     // swaps have no queue path — policy.evaluatePolicySwap already explains

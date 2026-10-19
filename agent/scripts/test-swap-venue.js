@@ -205,6 +205,35 @@ const runSwap = async (stub) =>
     JSON.stringify({ d: d.decision, e: d.explanation, c: d.rejectionCategory }));
 }
 
+// C6: review-band swap (the v3.9.4 crash). Risk score 30-59 on a swap used to
+// fall into the transfer-queue path, which read intent.recipient.address
+// (undefined on swaps) and 500'd the command route. It must now refuse cleanly.
+{
+  // deterministic review band: 950 USDC = 95% of the per-tx cap (+10 anomaly),
+  // >3x the 1 USDC median history spend (+20 anomaly), 6 live window entries
+  // (+15 velocity) -> score 45 = "review" (thresholds 30/60, no HF token)
+  const rs = JSON.parse(JSON.stringify(fixture));
+  rs.tokens.USDC = {
+    ...rs.tokens.USDC,
+    vaultBalance: "5000000000", maxPerTx: "1000000000",
+    dailyLimit: "2500000000", spentInWindow: "0", liveEntries: 6,
+  };
+  rs.history = [{ token: "USDC", amount: "1000000" }];
+  const d = await processCommand("convert 950 dollars to eth", {
+    state: rs, codesizeMap: {}, chain: mkStub(), journal: fakeJournal,
+  });
+  check("review-band swap -> clean REJECT (old code crashed with a 500)",
+    d.decision === "reject" && d.rejectionCategory === "RiskEngine",
+    JSON.stringify({ d: d.decision, c: d.rejectionCategory }));
+  check("the refusal explains WHY swaps cannot queue and what to do",
+    /no human-approval queue/.test(d.explanation) && /Nothing was swapped/.test(d.explanation) &&
+    /smaller amount/.test(d.explanation),
+    JSON.stringify(d.explanation));
+  check("the risk signals and score are visible in the refusal",
+    new RegExp(`score ${d.risk?.score}/100`).test(d.explanation) && d.risk?.score >= 30 && d.risk?.score < 60,
+    JSON.stringify({ score: d.risk?.score, band: d.risk?.band }));
+}
+
 // ── Phase D: build identity ───────────────────────────────────────────────────
 console.log("\nD. build identity");
 check("AGENT_VERSION is v3.9.4", AGENT_VERSION === "v3.9.4", AGENT_VERSION);
