@@ -51,7 +51,7 @@ own event log.
 ## Help & guidance layer
 
 The dashboard ships a floating help assistant (the "?" button, every tab).
-It answers questions about Aegis, the user's own setup, or crypto basics —
+It answers questions about Aegis, the user's own setup, or crypto basics:
 clearly, simply, and in the user's own language. It is the advisory twin of
 the executor: `POST /me/help` can never parse an intent, execute, or queue
 anything, by construction. Answers are grounded in a live facts snapshot
@@ -59,13 +59,13 @@ anything, by construction. Answers are grounded in a live facts snapshot
 "why was my payment blocked?" gets the real reason instead of a guess. An
 LLM writes the answer when a key is configured; a curated, facts-aware FAQ
 is the deterministic floor under it, so Help stays useful with the LLM
-down or budgetless — the same philosophy as the rules parser.
+down or budgetless, the same philosophy as the rules parser.
 
 ## Browser wallet funding
 
 The Home tab ships a "Connect wallet" card: any EIP-1193 browser wallet
 (MetaMask, Rabby, Brave…) can send Sepolia ETH straight to any of the
-user's own Aegis addresses — the desktop twin of the QR buttons. It is
+user's own Aegis addresses, the desktop twin of the QR buttons. It is
 strictly receive-only from the app's perspective: the only possible
 destination is one of the user's own addresses, and the send is
 Sepolia-gated (chainId checked before a transaction is ever proposed and
@@ -199,7 +199,7 @@ swaps it cannot serve, before any money moves:
   large, with the payout and the reachable cap in the reply, instead of
   failing through the inventory error with a misleading hint.
 - a swap the risk engine wants a human to look at (score 30-59) is refused
-  honestly — the vault contract's approval queue can only hold transfers,
+  honestly: the vault contract's approval queue can only hold transfers,
   so there is no queue path for swaps.
 - a missing feed (local anvil), a stale answer or an unreachable RPC
   degrades the price check to a visible warning unless `ORACLE_STRICT=true`
@@ -209,11 +209,11 @@ Since v3.9.6 the refusals themselves are honest about what the user can
 actually do:
 
 - over-cap swap refusals point at the real remedies (raise the limit on
-  the Limits page and retry, or withdraw and swap outside the vault) —
+  the Limits page and retry, or withdraw and swap outside the vault):
   the vault has no owner-swap path, so "perform this manually" was a
   dead end and is gone.
 - every policy refusal states that the transaction shown next to it is
-  the on-chain `logRejection` audit entry and no funds moved — the
+  the on-chain `logRejection` audit entry and no funds moved: the
   dashboard renders that tx hash as an explorer link, which used to read
   like the rejected swap might have gone through.
 - when a venue pair is unpriced (`MockSwap__RateNotSet`), the agent
@@ -272,7 +272,7 @@ npm run evidence -- --vault 0xe250… --from-block 11947000 \
 The C4 row comes from `agent/docs/evidence/manual-entries.json`: a
 deliberately reverted `agentExecute` called directly from the vault owner's
 exported key (gas limit forced so the revert is mined, not simulated away).
-The contract refused with `Aegis__NotAgent` — the chain enforces role
+The contract refused with `Aegis__NotAgent`: the chain enforces role
 separation even when the AI backend is bypassed entirely.
 
 ## Security notes
@@ -291,12 +291,12 @@ attempts across direct, embedded, and fake-system channels.
 Features deliberately deferred past the competition deadline, in risk order:
 
 - **Recurring / scheduled payments** ("pay the landlord on the 1st of every
-  month"). A scheduler is a new subsystem — a durable schedule store, a
+  month"). A scheduler is a new subsystem: a durable schedule store, a
   catch-up execution loop, per-run policy re-evaluation, and a pause/kill
-  switch — and each of those is a failure surface. It was scoped and then
+  switch, and each of those is a failure surface. It was scoped and then
   deliberately not built the day before the deadline; the safe v1 shape is
   schedules that queue for human approval rather than execute autonomously.
-- **Production swap venue** — a real DEX router (e.g. Uniswap V3 on Sepolia)
+- **Production swap venue**: a real DEX router (e.g. Uniswap V3 on Sepolia)
   behind the same `quote → oracle sanity check → execute` pipeline that
   currently fronts the fixed-rate mock venue.
 

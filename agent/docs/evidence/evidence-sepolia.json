@@ -143,7 +143,7 @@
           "txHash": "0xc0fc4ee605a08a405de45df89bec7e4a8cb8c4b2c2acb34843a1cc7a9529f51d",
           "block": 11948353,
           "ts": "2026-10-19T13:05:00Z",
-          "text": "agentExecute(5,000 USDC) called directly from the vault OWNER's exported key (self-custody export route), gas limit forced to 400,000 so the revert is MINED on-chain (status 0, 32,682 gas, block 11,948,353). Revert reason: Aegis__NotAgent — the contract refused the vault's own owner: role separation is enforced on-chain, so bypassing the AI backend gains nothing. Every guardrail lives in the contract, not the prompt."
+          "text": "agentExecute(5,000 USDC) called directly from the vault OWNER's exported key (self-custody export route), gas limit forced to 400,000 so the revert is MINED on-chain (status 0, 32,682 gas, block 11,948,353). Revert reason: Aegis__NotAgent, the contract refused the vault's own owner: role separation is enforced on-chain, so bypassing the AI backend gains nothing. Every guardrail lives in the contract, not the prompt."
         }
       ]
     },
@@ -246,7 +246,7 @@
           "txHash": "0xd9d8e7059aea9b4990aefa217a3593ef1090a5518cec5a9ccba6fc397a25b6ac",
           "block": 11948264,
           "ts": "2026-10-19 12:47:36 UTC",
-          "text": "kill switch: agent PAUSED by owner — every agent action now refuses on-chain"
+          "text": "kill switch: agent PAUSED by owner; every agent action now refuses on-chain"
         },
         {
           "classId": "C6",
@@ -254,7 +254,7 @@
           "txHash": "0x28d2e4970d93c223cff9e157e47aec5a45c4959d6398fbf041d91adb07182318",
           "block": 11948265,
           "ts": "2026-10-19 12:47:48 UTC",
-          "text": "kill switch: agent RESUMED by owner — autonomy restored"
+          "text": "kill switch: agent RESUMED by owner; autonomy restored"
         },
         {
           "classId": "C6",
@@ -270,7 +270,7 @@
           "txHash": "0xdfb2cb86dc1d9b5c0760e3066b8c18753c8e820e3aceac8b53d7c6455bf58970",
           "block": 11948276,
           "ts": "2026-10-19 12:50:00 UTC",
-          "text": "kill switch: agent PAUSED by owner — every agent action now refuses on-chain"
+          "text": "kill switch: agent PAUSED by owner; every agent action now refuses on-chain"
         },
         {
           "classId": "C6",
@@ -278,7 +278,7 @@
           "txHash": "0x4cb82e4ed6a989485eb417e5adbd2d003204cef8c199ce61cee2d60e5ead3043",
           "block": 11948278,
           "ts": "2026-10-19 12:50:24 UTC",
-          "text": "kill switch: agent RESUMED by owner — autonomy restored"
+          "text": "kill switch: agent RESUMED by owner; autonomy restored"
         }
       ]
     },

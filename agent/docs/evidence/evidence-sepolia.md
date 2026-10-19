@@ -1,7 +1,7 @@
-# Aegis Wallet — on-chain evidence pack (sepolia)
+# Aegis Wallet: on-chain evidence pack (sepolia)
 
 Vault `0xe2501aAe11f790a4ef5195364C855e8468b9Da28` · chainId **11155111** · blocks 11947000–11948364 · generated 2026-10-19T13:07:58.129Z
-Regenerate any time: `node harvest-evidence.mjs` — this pack is read from chain state and cannot drift.
+Regenerate any time: `node harvest-evidence.mjs`; this pack is read from chain state and cannot drift.
 
 | Class | Evidence | Have / need | Status |
 |---|---|---|---|
@@ -14,9 +14,9 @@ Regenerate any time: `node harvest-evidence.mjs` — this pack is read from chai
 | **C7** Policy / whitelist configuration (on-chain policy state) | 14 | 14 / 2 | PASS |
 | **Total unique tx hashes** | 34 | 34 / 15 | PASS |
 
-**Submission gate: PASS — pack is submission-ready**
+**Submission gate: PASS, pack is submission-ready**
 
-## C1 — L1 transfer execution (agent key alone, inside guardrails) (3/3)
+## C1: L1 transfer execution (agent key alone, inside guardrails) (3/3)
 
 | Tx | Block | Time | What it proves |
 |---|---|---|---|
@@ -24,14 +24,14 @@ Regenerate any time: `node harvest-evidence.mjs` — this pack is read from chai
 | [0x44522f5ae0…f07e411d](https://sepolia.etherscan.io/tx/0x44522f5ae0714ad159b29ad305cb69361c27f325aeb49bd067fa9b75f07e411d) | 11948209 | 2026-10-19 12:36:12 UTC | execute 15 USDC → 0x11c024Bf…6Ae86f · "User requested transferring 15 USDC to Savings." · window after: 40 USDC |
 | [0x64edf1fb75…6d1d9559](https://sepolia.etherscan.io/tx/0x64edf1fb75bf9b6ac62ea1678ecbf82e82f3e514ebfa8fe822fcb2326d1d9559) | 11948210 | 2026-10-19 12:36:24 UTC | execute 40 USDC → 0x11c024Bf…6Ae86f · "User requests transferring 40 USDC to Savings." · window after: 80 USDC |
 
-## C2 — Rebalancing swap via MockSwap (slippage floor enforced) (2/2)
+## C2: Rebalancing swap via MockSwap (slippage floor enforced) (2/2)
 
 | Tx | Block | Time | What it proves |
 |---|---|---|---|
 | [0xd84fa983ad…cbb3fb16](https://sepolia.etherscan.io/tx/0xd84fa983ad3f8cb1b494f0559ed75a00fa6821b15fc4097d5f19eabdcbb3fb16) | 11948260 | 2026-10-19 12:46:48 UTC | swap 50 USDC → 0.02064145381887537 ETH (minOut 0.02033183201159224 ETH enforced) · "User requested swapping 50 USDC for ETH." |
 | [0xb91a639f94…7a1f55d0](https://sepolia.etherscan.io/tx/0xb91a639f94a9a4b24a7372a3d8f533127b95dc8c19fd840beec37d567a1f55d0) | 11948262 | 2026-10-19 12:47:12 UTC | swap 50 USDC → 0.02064145381887537 ETH (minOut 0.02033183201159224 ETH enforced) · "User requested swapping 50 USDC for ETH." |
 
-## C3 — On-chain rejection (logRejection ledger) (6/2)
+## C3: On-chain rejection (logRejection ledger) (6/2)
 
 | Tx | Block | Time | What it proves |
 |---|---|---|---|
@@ -42,13 +42,13 @@ Regenerate any time: `node harvest-evidence.mjs` — this pack is read from chai
 | [0x11a5d834cb…93161417](https://sepolia.etherscan.io/tx/0x11a5d834cb2831bcd040167927e94ca38f9072bfe9bc75252cc5859993161417) | 11948263 | 2026-10-19 12:47:24 UTC | rejection ledger entry · category CapPerTx · actor 0x5f2D170E…376C2D |
 | [0x21bd59bfd0…46ff5714](https://sepolia.etherscan.io/tx/0x21bd59bfd03866722fd7bf57c995433e21b0a0a750b5d86e67486f6546ff5714) | 11948275 | 2026-10-19 12:49:48 UTC | rejection ledger entry · category OwnerRejected · actor 0xb177fC9f…Ce7D72 |
 
-## C4 — Deliberately reverted transaction (direct call, manual gas limit) (1/1)
+## C4: Deliberately reverted transaction (direct call, manual gas limit) (1/1)
 
 | Tx | Block | Time | What it proves |
 |---|---|---|---|
-| [0xc0fc4ee605…9529f51d](https://sepolia.etherscan.io/tx/0xc0fc4ee605a08a405de45df89bec7e4a8cb8c4b2c2acb34843a1cc7a9529f51d) | 11948353 | 2026-10-19T13:05:00Z | agentExecute(5,000 USDC) called directly from the vault OWNER's exported key (self-custody export route), gas limit forced to 400,000 so the revert is MINED on-chain (status 0, 32,682 gas, block 11,948,353). Revert reason: Aegis__NotAgent — the contract refused the vault's own owner: role separation is enforced on-chain, so bypassing the AI backend gains nothing. Every guardrail lives in the contract, not the prompt. |
+| [0xc0fc4ee605…9529f51d](https://sepolia.etherscan.io/tx/0xc0fc4ee605a08a405de45df89bec7e4a8cb8c4b2c2acb34843a1cc7a9529f51d) | 11948353 | 2026-10-19T13:05:00Z | agentExecute(5,000 USDC) called directly from the vault OWNER's exported key (self-custody export route), gas limit forced to 400,000 so the revert is MINED on-chain (status 0, 32,682 gas, block 11,948,353). Revert reason: Aegis__NotAgent, the contract refused the vault's own owner: role separation is enforced on-chain, so bypassing the AI backend gains nothing. Every guardrail lives in the contract, not the prompt. |
 
-## C5 — Approval round trip (queue → approve → execute) (6/3)
+## C5: Approval round trip (queue → approve → execute) (6/3)
 
 | Tx | Block | Time | What it proves |
 |---|---|---|---|
@@ -59,20 +59,20 @@ Regenerate any time: `node harvest-evidence.mjs` — this pack is read from chai
 | [0x4fc3a0f48f…6b97ca44](https://sepolia.etherscan.io/tx/0x4fc3a0f48f9d6d6b6958dcd1217f43f0e5636bdddd86099bff5483626b97ca44) | 11948255 | 2026-10-19 12:45:48 UTC | queue proposal #4: 1200 USDC → 0x11c024Bf…6Ae86f (risk score 35) · "User requested transferring 1200 USDC to Savings. [risk 10/100; over per-transaction cap]" |
 | [0xeafb4797f2…eed96d76](https://sepolia.etherscan.io/tx/0xeafb4797f21fbf17401124b35f85684beaa50670d4ae8ff43a65643aeed96d76) | 11948256 | 2026-10-19 12:46:00 UTC | owner approves proposal #2: 1200000000 USDC → 0x11c024Bf…6Ae86f (human-in-the-loop) |
 
-## C6 — Kill switch (pause + resume) (8/2)
+## C6: Kill switch (pause + resume) (8/2)
 
 | Tx | Block | Time | What it proves |
 |---|---|---|---|
 | [0xd1dde5fb63…31b300ce](https://sepolia.etherscan.io/tx/0xd1dde5fb634e8e60e9feca042cdacdc04d39f8274d59f43d59ef1dd931b300ce) | 11948256 | 2026-10-19 12:46:00 UTC | owner rejects proposal #2 |
 | [0x117e477cf2…8b6193ad](https://sepolia.etherscan.io/tx/0x117e477cf23bffc5131e64b047053439ef6c8efd3e9ac576c257a8818b6193ad) | 11948258 | 2026-10-19 12:46:24 UTC | owner rejects proposal #3 |
 | [0x923e77885b…3dd44408](https://sepolia.etherscan.io/tx/0x923e77885bb54fb59c8cd2f2b0fed6964349b28afd8a34655ee9b2183dd44408) | 11948259 | 2026-10-19 12:46:36 UTC | owner rejects proposal #1 |
-| [0xd9d8e7059a…7a25b6ac](https://sepolia.etherscan.io/tx/0xd9d8e7059aea9b4990aefa217a3593ef1090a5518cec5a9ccba6fc397a25b6ac) | 11948264 | 2026-10-19 12:47:36 UTC | kill switch: agent PAUSED by owner — every agent action now refuses on-chain |
-| [0x28d2e4970d…07182318](https://sepolia.etherscan.io/tx/0x28d2e4970d93c223cff9e157e47aec5a45c4959d6398fbf041d91adb07182318) | 11948265 | 2026-10-19 12:47:48 UTC | kill switch: agent RESUMED by owner — autonomy restored |
+| [0xd9d8e7059a…7a25b6ac](https://sepolia.etherscan.io/tx/0xd9d8e7059aea9b4990aefa217a3593ef1090a5518cec5a9ccba6fc397a25b6ac) | 11948264 | 2026-10-19 12:47:36 UTC | kill switch: agent PAUSED by owner; every agent action now refuses on-chain |
+| [0x28d2e4970d…07182318](https://sepolia.etherscan.io/tx/0x28d2e4970d93c223cff9e157e47aec5a45c4959d6398fbf041d91adb07182318) | 11948265 | 2026-10-19 12:47:48 UTC | kill switch: agent RESUMED by owner; autonomy restored |
 | [0x21bd59bfd0…46ff5714](https://sepolia.etherscan.io/tx/0x21bd59bfd03866722fd7bf57c995433e21b0a0a750b5d86e67486f6546ff5714) | 11948275 | 2026-10-19 12:49:48 UTC | owner rejects proposal #4 |
-| [0xdfb2cb86dc…5bf58970](https://sepolia.etherscan.io/tx/0xdfb2cb86dc1d9b5c0760e3066b8c18753c8e820e3aceac8b53d7c6455bf58970) | 11948276 | 2026-10-19 12:50:00 UTC | kill switch: agent PAUSED by owner — every agent action now refuses on-chain |
-| [0x4cb82e4ed6…5ead3043](https://sepolia.etherscan.io/tx/0x4cb82e4ed6a989485eb417e5adbd2d003204cef8c199ce61cee2d60e5ead3043) | 11948278 | 2026-10-19 12:50:24 UTC | kill switch: agent RESUMED by owner — autonomy restored |
+| [0xdfb2cb86dc…5bf58970](https://sepolia.etherscan.io/tx/0xdfb2cb86dc1d9b5c0760e3066b8c18753c8e820e3aceac8b53d7c6455bf58970) | 11948276 | 2026-10-19 12:50:00 UTC | kill switch: agent PAUSED by owner; every agent action now refuses on-chain |
+| [0x4cb82e4ed6…5ead3043](https://sepolia.etherscan.io/tx/0x4cb82e4ed6a989485eb417e5adbd2d003204cef8c199ce61cee2d60e5ead3043) | 11948278 | 2026-10-19 12:50:24 UTC | kill switch: agent RESUMED by owner; autonomy restored |
 
-## C7 — Policy / whitelist configuration (on-chain policy state) (14/2)
+## C7: Policy / whitelist configuration (on-chain policy state) (14/2)
 
 | Tx | Block | Time | What it proves |
 |---|---|---|---|

@@ -2,7 +2,7 @@
   {
     "txHash": "0xc0fc4ee605a08a405de45df89bec7e4a8cb8c4b2c2acb34843a1cc7a9529f51d",
     "classId": "C4",
-    "note": "agentExecute(5,000 USDC) called directly from the vault OWNER's exported key (self-custody export route), gas limit forced to 400,000 so the revert is MINED on-chain (status 0, 32,682 gas, block 11,948,353). Revert reason: Aegis__NotAgent — the contract refused the vault's own owner: role separation is enforced on-chain, so bypassing the AI backend gains nothing. Every guardrail lives in the contract, not the prompt.",
+    "note": "agentExecute(5,000 USDC) called directly from the vault OWNER's exported key (self-custody export route), gas limit forced to 400,000 so the revert is MINED on-chain (status 0, 32,682 gas, block 11,948,353). Revert reason: Aegis__NotAgent, the contract refused the vault's own owner: role separation is enforced on-chain, so bypassing the AI backend gains nothing. Every guardrail lives in the contract, not the prompt.",
     "block": 11948353,
     "ts": "2026-10-19T13:05:00Z"
   }

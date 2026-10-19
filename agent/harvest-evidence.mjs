@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Aegis agent — evidence pack generator (7-class taxonomy, PRD Table 16).
+// Aegis agent: evidence pack generator (7-class taxonomy, PRD Table 16).
 //
 // Reads a vault's event log from the chain, classifies every event, merges
 // manual entries (a deliberately-reverted tx emits no event, so it lives in
@@ -49,7 +49,7 @@ const TARGET = (() => {
   return new ethers.Contract(a, VAULT_ABI, provider);
 })();
 
-// ── taxonomy (PRD Table 16 — minimum counts per class) ─────────────────────
+// ── taxonomy (PRD Table 16, minimum counts per class) ─────────────────────
 const TAXONOMY = [
   { id: "C1", need: 3, title: "L1 transfer execution (agent key alone, inside guardrails)", events: ["AgentExecuted"] },
   { id: "C2", need: 2, title: "Rebalancing swap via MockSwap (slippage floor enforced)", events: ["AgentSwapped"] },
@@ -95,9 +95,9 @@ function describe(name, ev) {
     case "TxRejected":
       return `owner rejects proposal #${a.id}`;
     case "AgentPaused":
-      return `kill switch: agent PAUSED by owner — every agent action now refuses on-chain`;
+      return `kill switch: agent PAUSED by owner; every agent action now refuses on-chain`;
     case "AgentResumed":
-      return `kill switch: agent RESUMED by owner — autonomy restored`;
+      return `kill switch: agent RESUMED by owner; autonomy restored`;
     case "AgentRevoked":
       return `kill switch: agent REVOKED permanently (sticky)`;
     case "VaultDeployed":
@@ -122,7 +122,7 @@ function describe(name, ev) {
 // ── main ────────────────────────────────────────────────────────────────────
 async function main() {
   if (!config.vault) {
-    console.error("VAULT_ADDRESS not set — copy .env.example to .env first.");
+    console.error("VAULT_ADDRESS not set: copy .env.example to .env first.");
     process.exit(2);
   }
 
@@ -176,9 +176,9 @@ async function main() {
     try {
       const entries = JSON.parse(readFileSync(MANUAL, "utf8"));
       for (const m of entries) {
-        if (!/^0x[0-9a-fA-F]{64}$/.test(m.txHash ?? "")) { console.error(`  [warn] manual entry has invalid txHash — skipped`); continue; }
+        if (!/^0x[0-9a-fA-F]{64}$/.test(m.txHash ?? "")) { console.error(`  [warn] manual entry has invalid txHash: skipped`); continue; }
         const cls = TAXONOMY.find((t) => t.id === (m.classId ?? "C4"));
-        if (!cls) { console.error(`  [warn] manual entry classId "${m.classId}" unknown — skipped`); continue; }
+        if (!cls) { console.error(`  [warn] manual entry classId "${m.classId}" unknown: skipped`); continue; }
         rows.push({ classId: cls.id, event: "manual", txHash: m.txHash, block: m.block ?? "?", ts: m.ts ?? "?", text: m.note ?? "" });
       }
     } catch (e) { console.error(`  [warn] could not parse ${MANUAL}: ${e.message}`); }
@@ -192,10 +192,10 @@ async function main() {
 
   // markdown
   const md = [];
-  md.push(`# Aegis Wallet — on-chain evidence pack (${label})`);
+  md.push(`# Aegis Wallet: on-chain evidence pack (${label})`);
   md.push("");
   md.push(`Vault \`${config.vault}\` · chainId **${chainId}** · blocks ${FROM_BLOCK}–${latest} · generated ${new Date().toISOString()}`);
-  md.push(`Regenerate any time: \`node harvest-evidence.mjs\` — this pack is read from chain state and cannot drift.`);
+  md.push(`Regenerate any time: \`node harvest-evidence.mjs\`; this pack is read from chain state and cannot drift.`);
   md.push("");
   md.push(`| Class | Evidence | Have / need | Status |`);
   md.push(`|---|---|---|---|`);
@@ -205,11 +205,11 @@ async function main() {
   }
   md.push(`| **Total unique tx hashes** | ${uniqueHashes} | ${uniqueHashes} / ${HASH_TARGET} | ${uniqueHashes >= HASH_TARGET ? "PASS" : "MISSING"} |`);
   md.push("");
-  md.push(`**Submission gate: ${gateOk ? "PASS — pack is submission-ready" : "NOT READY — collect the missing classes above"}**`);
+  md.push(`**Submission gate: ${gateOk ? "PASS, pack is submission-ready" : "NOT READY, collect the missing classes above"}**`);
   md.push("");
   for (const t of TAXONOMY) {
     if (!byClass[t.id].length) continue;
-    md.push(`## ${t.id} — ${t.title} (${byClass[t.id].length}/${t.need})`);
+    md.push(`## ${t.id}: ${t.title} (${byClass[t.id].length}/${t.need})`);
     md.push("");
     md.push(`| Tx | Block | Time | What it proves |`);
     md.push(`|---|---|---|---|`);
