@@ -239,6 +239,20 @@ at execution time. Prompt-injection attempts are treated as untrusted input
 before any parsing happens, which is why the eval gate blocks all 30
 attempts across direct, embedded, and fake-system channels.
 
+## Roadmap
+
+Features deliberately deferred past the competition deadline, in risk order:
+
+- **Recurring / scheduled payments** ("pay the landlord on the 1st of every
+  month"). A scheduler is a new subsystem — a durable schedule store, a
+  catch-up execution loop, per-run policy re-evaluation, and a pause/kill
+  switch — and each of those is a failure surface. It was scoped and then
+  deliberately not built the day before the deadline; the safe v1 shape is
+  schedules that queue for human approval rather than execute autonomously.
+- **Production swap venue** — a real DEX router (e.g. Uniswap V3 on Sepolia)
+  behind the same `quote → oracle sanity check → execute` pipeline that
+  currently fronts the fixed-rate mock venue.
+
 ## Contributing
 
 Clone, run `npm install` in `agent/` and `dashboard/`, and run the test
