@@ -313,6 +313,52 @@ const runSwap = async (stub) =>
     JSON.stringify({ order: order.join(","), e: d.explanation }));
 }
 
+// C10: the live 2026-10-19 scenario — "0.04 eth to usd" where the venue only
+// prices the reverse pair. The refusal must (a) parse the direction correctly
+// even under the rules fallback ("usd" = USDC sell target), and (b) tell the
+// user the opposite direction still works instead of a dead end.
+{
+  const calls = [];
+  const stub = mkStub({
+    quoteSwap: async (sell, buy, amount) => {
+      calls.push(`${sell}->${buy}:${amount}`);
+      if (sell === "ETH") {
+        throw new Error("the venue refused to quote this pair: MockSwap__RateNotSet(0x0000000000000000000000000000000000000000, 0x5fbdb2315678afecb367f032d93f642f64180aa3)");
+      }
+      return { sellSymbol: sell, buySymbol: buy, expectedOutHuman: 0.0125, minOutHuman: 0.0123, minOutBase: "12340000000000000" };
+    },
+  });
+  const d = await processCommand("convert 0.04 eth to usd", {
+    state: fixture, codesizeMap: {}, chain: stub, journal: fakeJournal,
+  });
+  check("rules fallback parses 'eth to usd' as sell-ETH (the alias fix)",
+    d.intent?.action === "swap" && d.intent?.token === "ETH" && d.intent?.buyToken === "USDC",
+    JSON.stringify({ token: d.intent?.token, buy: d.intent?.buyToken }));
+  check("unpriced ETH->USDC -> REJECT names RateNotSet AND the working direction",
+    d.decision === "reject" && /Could not quote this swap/.test(d.explanation) &&
+    /MockSwap__RateNotSet/.test(d.explanation) && /setRate/.test(d.explanation) &&
+    /The opposite direction \(USDC \u2192 ETH\) is currently available/.test(d.explanation),
+    JSON.stringify(d.explanation));
+  check("the reverse probe was a single read-only quote, nothing else moved",
+    calls.length === 2 && calls[0] === "ETH->USDC:0.04" && calls[1] === "USDC->ETH:1",
+    calls.join(","));
+}
+
+// C11: BOTH directions unpriced -> the refusal stays honest, no phantom hint,
+// and the probe's own failure never crashes the reject path
+{
+  const stub = mkStub({
+    quoteSwap: async () => { throw new Error("the venue refused to quote this pair: MockSwap__RateNotSet(0x0000000000000000000000000000000000000000, 0x5fbdb2315678afecb367f032d93f642f64180aa3)"); },
+  });
+  const d = await processCommand("convert 0.04 eth to usdc", {
+    state: fixture, codesizeMap: {}, chain: stub, journal: fakeJournal,
+  });
+  check("both directions unpriced -> clean REJECT, no opposite-direction hint",
+    d.decision === "reject" && /Could not quote this swap/.test(d.explanation) &&
+    !/opposite direction/i.test(d.explanation),
+    JSON.stringify(d.explanation));
+}
+
 // ── Phase D: build identity ───────────────────────────────────────────────────
 console.log("\nD. build identity");
 check("AGENT_VERSION is v3.9.5", AGENT_VERSION === "v3.9.5", AGENT_VERSION);

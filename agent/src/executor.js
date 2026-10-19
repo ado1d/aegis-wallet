@@ -603,13 +603,31 @@ async function runCommand(text, opts = {}) {
       // venue owner never priced): a clean REJECT with the named error,
       // not an opaque 500
       const msg = String(err?.message || err).slice(0, 300);
+      // v3.9.6: when a pair is unpriced, probe the OPPOSITE direction
+      // read-only — if the venue prices it, the refusal says so and a dead
+      // end becomes "here's what still works" (seen live 2026-10-19: the
+      // user's ETH->USDC swap died on RateNotSet and nothing told them
+      // USDC->ETH was fine)
+      let reverseHint = "";
+      if (/RateNotSet/.test(msg) && !config.dryRun) {
+        try {
+          const probe = opts.quote
+            ? await opts.quote({ ...intent, token: intent.buyToken, buyToken: intent.token, amount: 1 })
+            : await c.quoteSwap(intent.buyToken, intent.token, 1);
+          if (probe && (Number(probe.expectedOutHuman) > 0 || probe.minOutBase)) {
+            reverseHint =
+              ` The opposite direction (${intent.buyToken} \u2192 ${intent.token}) is currently available at this venue.`;
+          }
+        } catch { /* reverse pair unpriced too — keep the generic guidance */ }
+      }
       const decision = {
         ...trace,
         decision: "reject",
         rejectionCategory: "Balance",
         explanation:
           `Could not quote this swap: ${msg}.` +
-          (/RateNotSet/.test(msg) ? " The venue has no exchange rate for this pair yet; its owner must call setRate." : ""),
+          (/RateNotSet/.test(msg) ? " The venue has no exchange rate for this pair yet; its owner must call setRate." : "") +
+          reverseHint,
         elapsedMs: Date.now() - started,
       };
       append({ type: "decision", ...decision });

@@ -584,8 +584,11 @@ export function parseIntentRules(text, whitelist = [], tokenInfo = null) {
   if (looksSwap) {
     const amount = extractAmount(flat);
     const token = extractToken(flat) || (tokenInfo?.USDC?.available !== false ? "USDC" : null);
-    // swap direction: "X dollars to ETH" => sell USDC buy ETH
-    const sell = /\b(?:eth|ether)\b[\s\S]{0,30}\b(?:to|into|for)\b[\s\S]{0,30}\b(?:usdc|dollars?)\b/i.test(flat)
+    // swap direction: "X dollars to ETH" => sell USDC buy ETH. "usd" is an
+    // alias for USDC here too — without it, "0.04 eth to usd" (the exact
+    // phrasing seen live 2026-10-19) silently flips to sell-USDC under the
+    // rules fallback (LLM breaker / no key), swapping the WRONG direction
+    const sell = /\b(?:eth|ether)\b[\s\S]{0,30}\b(?:to|into|for)\b[\s\S]{0,30}\b(?:usdc|usd|dollars?)\b/i.test(flat)
       ? "ETH" : "USDC";
     const buy = sell === "USDC" ? "ETH" : "USDC";
     if (!amount) {
