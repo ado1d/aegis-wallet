@@ -654,6 +654,23 @@ async function runCommand(text, opts = {}) {
         .ensureVenueLiquidity(q)
         .catch((e) => ({ ok: false, reason: String(e?.message || e).slice(0, 160) }));
     }
+    // too large for the venue's liquidity (v3.9.5): no affordable refill can
+    // ever cover this payout, so refuse BEFORE the simulation. v3.9.4 sent a
+    // partial top-up anyway and failed at the pre-flight with a misleading
+    // "fund the agent key" hint — the real fix is a smaller swap.
+    if (trace.venueLiquidity?.tooLarge) {
+      const decision = {
+        ...trace,
+        decision: "reject",
+        rejectionCategory: "Balance",
+        explanation:
+          `REJECTED: swap too large for the venue's liquidity. ${trace.venueLiquidity.reason}. ` +
+          `Split it into smaller swaps, or ask the operator to raise VENUE_ETH_TARGET / fund the agent key. Nothing moved.`,
+        elapsedMs: Date.now() - started,
+      };
+      append({ type: "decision", ...decision });
+      return decision;
+    }
     const sellTok = tokens[intent.token];
     const sellBase = toBaseUnits(intent.amount, sellTok.decimals);
     const pre = config.dryRun

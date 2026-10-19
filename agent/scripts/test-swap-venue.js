@@ -115,6 +115,20 @@ const cant = venueTopUpPlan(0.005, 0.008, 0);
 check("broke agent key -> refuse with a reason, never spend the gas reserve",
   cant.action === "cant" && /gas reserve/.test(cant.reason), JSON.stringify(cant));
 
+check("payout no affordable refill can cover -> named too-large (not a partial send)",
+  venueTopUpPlan(0.005, 0.012, 0.05).action === "too-large" &&
+  /pays out 0\.0500 ETH/.test(venueTopUpPlan(0.005, 0.012, 0.05).reason),
+  JSON.stringify(venueTopUpPlan(0.005, 0.012, 0.05)));
+
+check("huge payout vs a healthy key -> still too-large, numbers honest",
+  venueTopUpPlan(0.04, 0.3, 1.25).action === "too-large" &&
+  /at most 0\.3300 ETH/.test(venueTopUpPlan(0.04, 0.3, 1.25).reason),
+  JSON.stringify(venueTopUpPlan(0.04, 0.3, 1.25)));
+
+check("payout the agent CAN cover -> still a normal send, not too-large",
+  venueTopUpPlan(0.005, 0.3, 0.05).action === "send" &&
+  near(venueTopUpPlan(0.005, 0.3, 0.05).amountEth, 0.095));
+
 // ── Phase C: the executor swap branch ─────────────────────────────────────────
 console.log("\nC. executor swap branch (stubbed chain, live decision matrix)");
 
@@ -271,6 +285,32 @@ const runSwap = async (stub) =>
   check("the oracle verdict lands in the decision trace",
     d.oracle && d.oracle.verdict === "within" && d.oracle.driftPct === 65.1,
     JSON.stringify(d.oracle));
+}
+
+// C9: swap too large for venue liquidity -> refused before simulate with the
+// real numbers (a 1.25 ETH payout vs a venue that can never hold it)
+{
+  const order = [];
+  const stub = mkStub({
+    oracleCheck: async () => ({ ok: true, verdict: "within", impliedUsdPerEth: 4000, oracleUsdPerEth: 2423.48, driftPct: 65.1, maxDriftPct: 90 }),
+    ensureVenueLiquidity: async () => {
+      order.push("ensure");
+      return { ok: false, tooLarge: true, reason: "this swap pays out 1.2500 ETH (plus the 0.0200 ETH venue buffer), but the venue can hold at most 0.3300 ETH (0.0400 ETH held + what the agent key can spare)" };
+    },
+    simulate: async () => { order.push("simulate"); return { ok: true }; },
+    send: async () => { order.push("send"); return { hash: "dry-run", ok: true }; },
+  });
+  const d = await processCommand("convert 5000 dollars to eth", {
+    state: { ...fixture, tokens: { ...fixture.tokens, USDC: { ...fixture.tokens.USDC, vaultBalance: "5000000000", maxPerTx: "10000000000", dailyLimit: "10000000000", spentInWindow: "0", liveEntries: 1 } }, history: [] },
+    codesizeMap: {}, chain: stub, journal: fakeJournal,
+  });
+  check("too-large swap -> REJECT with the payout and the reachable cap",
+    d.decision === "reject" && d.rejectionCategory === "Balance" &&
+    /pays out 1\.2500 ETH/.test(d.explanation) && /at most 0\.3300 ETH/.test(d.explanation),
+    JSON.stringify(d.explanation));
+  check("the refusal tells the user what actually helps (smaller swaps), and never simulates",
+    /Split it into smaller swaps/.test(d.explanation) && order.join(",") === "ensure",
+    JSON.stringify({ order: order.join(","), e: d.explanation }));
 }
 
 // ── Phase D: build identity ───────────────────────────────────────────────────

@@ -436,6 +436,22 @@ export function venueTopUpPlan(venueEth, agentEth, payoutEth = 0) {
   const shortfall = need - venueEth; // minimum that must arrive for this swap
   const refill = Math.max(0, target - venueEth); // refill to the standing level
   const afford = agentEth - reserve; // never spend the gas reserve
+  // a payout no affordable refill can cover: even sending everything the
+  // agent key can spare leaves the venue short of this payout plus its
+  // buffer. v3.9.4 sent a partial top-up anyway and let the simulation fail
+  // with a misleading "fund the agent key" hint — name the real problem.
+  if (payoutEth > 0 && venueEth + Math.max(0, afford) < need) {
+    return {
+      action: "too-large",
+      payoutEth,
+      need,
+      canReachEth: venueEth + Math.max(0, afford),
+      reason:
+        `this swap pays out ${payoutEth.toFixed(4)} ETH (plus the ${min.toFixed(4)} ETH venue buffer), ` +
+        `but the venue can hold at most ${(venueEth + Math.max(0, afford)).toFixed(4)} ETH ` +
+        `(${venueEth.toFixed(4)} ETH held + what the agent key can spare)`,
+    };
+  }
   const amount = Math.min(Math.max(refill, shortfall), afford);
   if (!(amount > 0)) {
     return {
@@ -470,6 +486,11 @@ export async function ensureVenueLiquidity(q = null) {
         payoutEth
       );
       if (plan.action === "none") return { ok: true };
+      if (plan.action === "too-large") {
+        // no affordable refill can cover this payout: the executor refuses
+        // BEFORE any top-up broadcast (a partial send could never fix it)
+        return { ok: false, tooLarge: true, reason: plan.reason, payoutEth: plan.payoutEth, canReachEth: plan.canReachEth };
+      }
       if (plan.action === "cant") return { ok: false, reason: plan.reason };
       const r = await sendEthFrom(agentWallet, venueAddr, plan.amountEth);
       if (!r.ok) return { ok: false, reason: `venue ETH top-up failed: ${r.revert || r.hash}` };
