@@ -1,6 +1,6 @@
 {
   "name": "aegis-dashboard",
-  "version": "3.9.8",
+  "version": "3.9.9",
   "description": "Aegis Wallet dashboard (Next.js): landing, accounts, onboarding, and the seven-tab app over the agent API",
   "private": true,
   "scripts": {

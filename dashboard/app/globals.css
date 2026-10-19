@@ -701,3 +701,32 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 }
 .hp-inputrow button:disabled { opacity: 0.5; cursor: wait; }
 .hp-disclaimer { color: var(--faint); font-size: 11px; text-align: center; margin: 8px 14px 12px; }
+
+
+/* ── v3.9.9 connect wallet: EIP-1193 funding card ───────────────────────── */
+/* Strictly receive-only from the app's perspective: sends go FROM the user's
+   own browser wallet TO the user's own Aegis addresses. Sepolia-gated. */
+.cw-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.cw-dest { display: flex; gap: 8px; flex-wrap: wrap; }
+.cw-dest button {
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--dim);
+  border-radius: 10px; padding: 7px 12px; font-size: 12.5px;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+.cw-dest button:hover { border-color: var(--accent-dim); color: var(--text); }
+.cw-dest button.active {
+  border-color: var(--accent); color: var(--text);
+  background: #6d47e01f; box-shadow: 0 0 0 3px #a78bfa1f;
+}
+.cw-amtrow { display: flex; gap: 8px; }
+.cw-amtrow input {
+  flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 10px; padding: 9px 12px; font-size: 13px;
+}
+.cw-amtrow input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px #a78bfa2b; }
+.cw-phase { font-size: 12.5px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cw-msg {
+  margin: 0; font-size: 12.5px; color: var(--warn);
+  background: #fbbf2410; border: 1px solid #fbbf2430; border-radius: 10px; padding: 9px 12px;
+}

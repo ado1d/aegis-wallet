@@ -61,6 +61,19 @@ LLM writes the answer when a key is configured; a curated, facts-aware FAQ
 is the deterministic floor under it, so Help stays useful with the LLM
 down or budgetless — the same philosophy as the rules parser.
 
+## Browser wallet funding
+
+The Home tab ships a "Connect wallet" card: any EIP-1193 browser wallet
+(MetaMask, Rabby, Brave…) can send Sepolia ETH straight to any of the
+user's own Aegis addresses — the desktop twin of the QR buttons. It is
+strictly receive-only from the app's perspective: the only possible
+destination is one of the user's own addresses, and the send is
+Sepolia-gated (chainId checked before a transaction is ever proposed and
+re-checked on every chain change), so the button is structurally unable
+to move real mainnet funds. No wallet installed produces an honest
+message pointing at the QR alternative, and confirmation is tracked from
+the app by polling the receipt.
+
 ## Repository layout
 
 ```

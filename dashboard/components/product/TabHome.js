@@ -7,6 +7,7 @@ import { apiAuth } from "../auth.js";
 import { fmtBase } from "../lib.js";
 import { Card, Spinner } from "../ui.js";
 import { AddressQr, AgentChip, CapMeter, CopyText, TxLink } from "./bits.js";
+import ConnectWallet from "./ConnectWallet.js";
 import { toast } from "./toast.js";
 
 export default function TabHome({ me, onRun }) {
@@ -74,6 +75,8 @@ export default function TabHome({ me, onRun }) {
       <AgentStatusPanel me={me} />
 
       <WalletAccounts me={me} />
+
+      <ConnectWallet me={me} />
 
       <Card title="Quick actions" note="One tap sends it to the console, where you can watch the decision unfold.">
         <div className="qa-row">
