@@ -144,6 +144,20 @@ For the dashboard, import the repository again with the root directory set
 to `dashboard`, and set `NEXT_PUBLIC_AGENT_URL` to the agent's public URL
 plus `NEXT_PUBLIC_AEGIS_MODE=product`.
 
+The swap venue is the counterparty of every swap: it pays each buy-side
+payout from its own balance, so it needs ETH inventory for USDC to ETH
+swaps and USDC inventory for the reverse direction. The deploy script seeds
+both once, and since v3.9.4 the agent also refills the venue automatically
+from the agent key whenever it runs low (bounded by `VENUE_ETH_TARGET`,
+never spending the key's last `VENUE_GAS_RESERVE_ETH` of gas money).
+`/health` reports `venueEth` and `agentFuelEth`, so a dry venue or a dry
+operational key is a one-curl check. A venue deployed before v3.9.4 never
+had its reverse rate set; add it once from the venue owner's key:
+`cast send $VENUE "setRate(address,address,uint256,uint256)"
+0x0000000000000000000000000000000000000000 $USDC 4000000000 1000000000000000000
+--private-key $OWNER_KEY --rpc-url $RPC` (4000000000 / 1e18 encodes $4,000
+per ETH; adjust to taste).
+
 On Render, `render.yaml` is a complete alternative blueprint: `aegis-agent`
 and `aegis-dashboard` on the free tier, with the secrets marked `sync:
 false` set once in the Render dashboard.
@@ -169,6 +183,8 @@ npm run test:convo         # 26 conversation-memory checks
 npm run test:multilingual  # 66 multilingual and code-mixing cases
 npm run test:llm           # 24 fuzzy-matching + LLM network behavior checks
 npm run test:breaker       # circuit-breaker half-open cycle
+npm run test:venue         # 23 swap-venue checks: revert naming, inventory
+                           # top-up plan, executor swap branch
 npm run e2e:product        # 28-check product run (needs a live local stack)
 ```
 

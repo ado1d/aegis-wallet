@@ -33,7 +33,7 @@ const env = { ...loadEnvFile(resolve(AGENT_ROOT, ".env")), ...process.env };
 // console screenshot instantly answers "which build is this?". Bump on every
 // repackaged zip (v3.9 = hosted deployment: serverless surface (Vercel),
 // Postgres-backed conversation memory, operator fuel gauge in /health).
-export const AGENT_VERSION = "v3.9.3"; // v3.9.3 = honest broadcast failures, cross-instance tx leases, real retry endpoint
+export const AGENT_VERSION = "v3.9.4"; // v3.9.4 = swap-venue fixes: decode venue custom errors, auto-refill venue ETH/USDC inventory
 
 // Values that fail to parse fall back to their default WITH a loud warning
 // instead of poisoning the pipeline as NaN. (CP2 shipped a parser that did
