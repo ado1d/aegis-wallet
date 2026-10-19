@@ -476,6 +476,15 @@ async function route(req, res, url) {
           .catch(() => null);
       }
     }
+    // live swap-venue ETH inventory: the counterparty pays buy-side payouts
+    // from its own balance, so a dry venue is the one-curl answer to
+    // "why is every swap rejected?" (auto-refilled by ensureVenueLiquidity)
+    if (config.venue) {
+      body.venueEth = await chain.provider
+        .getBalance(config.venue)
+        .then((b) => ethers.formatEther(b))
+        .catch(() => null);
+    }
     return json(res, 200, body);
   }
 
@@ -603,6 +612,12 @@ async function _bootForServerlessInner() {
       console.warn(`  [self-heal] sweep skipped: ${String(e?.message || e).slice(0, 120)}`);
       return 0;
     }).then((n) => { if (n > 0) console.log(`  self-heal: ${n} vault(s) re-provisioning`); return n; }));
+    // standing venue-inventory check: refill the swap counterparty when it
+    // ran dry (one read; a top-up only fires below VENUE_ETH_MIN)
+    bg(chain.ensureVenueLiquidity().then((r) => {
+      if (r && r.ok === false) console.warn(`  [venue] ${r.reason || "inventory check failed"}`);
+      return r;
+    }).catch(() => {}));
     llmPreflight().catch(() => {});
   }
   if (configWarnings.length) {
@@ -647,6 +662,12 @@ export async function startServer() {
         `  tuning  : auto-risk>=${config.autoRiskThreshold}  reject-risk>=${config.rejectRiskThreshold}` +
         `  anomaly-x=${config.amountAnomalyX}  velocity>=${config.velocityWindowEntries}  slippage=${config.slippageBps}bps`
       );
+    }
+    // venue inventory self-heal: refill the shared swap counterparty when it
+    // runs dry (one read; a top-up only fires below VENUE_ETH_MIN)
+    const venueLiq = await chain.ensureVenueLiquidity().catch(() => ({ ok: false, reason: "inventory check failed" }));
+    if (venueLiq.ok === false) {
+      console.warn(`  [venue] ${venueLiq.reason || "inventory check failed"}; swaps will be rejected until it is funded`);
     }
     if (configWarnings.length) {
       console.log(`  [warn] .env problems (defaults substituted):`);

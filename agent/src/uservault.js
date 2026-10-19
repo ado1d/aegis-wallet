@@ -52,6 +52,7 @@ export async function userChainContext(userId) {
     send: chain.send,
     simulate: chain.simulate,
     quoteSwap: chain.quoteSwap,
+    ensureVenueLiquidity: chain.ensureVenueLiquidity,
     codesizeMap: chain.codesizeMap,
     queuedIdFromReceipt: chain.queuedIdFromReceipt,
   };

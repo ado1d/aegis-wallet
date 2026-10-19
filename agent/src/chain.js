@@ -414,6 +414,90 @@ export async function quoteSwap(sellSymbol, buySymbol, amountHuman) {
   };
 }
 
+// ── swap-venue inventory self-heal ──────────────────────────────────────────
+// MockSwap is the counterparty: it pays every buy-side payout from its OWN
+// balance, so USDC->ETH swaps drain its ETH and ETH->USDC swaps drain its
+// USDC. The deploy script seeds the venue once (0.1 ETH); a long-lived
+// testnet deployment runs dry and every later swap reverts with
+// MockSwap__EthPayoutFailed — the failure users saw as an opaque
+// "unknown custom error" REJECT. The agent key holds the operational pot,
+// so it refills the venue the same way it funds user stipends: automatically,
+// capped, idempotent, and never at the cost of its own gas money.
+
+/** Pure top-up decision for the venue's ETH inventory (plain ETH units).
+ *  Exported for the test suite; the chain-touching wrapper is below. */
+export function venueTopUpPlan(venueEth, agentEth, payoutEth = 0) {
+  const min = Math.max(0, config.venueEthMin); // buffer the venue must always keep
+  const target = Math.max(min, config.venueEthTarget); // refill level
+  const reserve = Math.max(0, config.venueGasReserveEth); // the agent key keeps its gas money
+  const need = payoutEth > 0 ? payoutEth + min : min; // this payout must clear plus buffer
+  if (venueEth >= need) return { action: "none" };
+  const shortfall = need - venueEth; // minimum that must arrive for this swap
+  const refill = Math.max(0, target - venueEth); // refill to the standing level
+  const afford = agentEth - reserve; // never spend the gas reserve
+  const amount = Math.min(Math.max(refill, shortfall), afford);
+  if (!(amount > 0)) {
+    return {
+      action: "cant",
+      reason:
+        `the venue holds ${venueEth.toFixed(4)} ETH but ${need.toFixed(4)} ETH is needed, ` +
+        `and the agent key can spare ${Math.max(0, afford).toFixed(4)} ETH after its gas reserve`,
+    };
+  }
+  return { action: "send", amountEth: amount };
+}
+
+/** Keep the shared swap venue payable. Called at boot (standing inventory)
+ *  and before every swap with the live quote, so a dry venue refills instead
+ *  of failing the pre-flight. Best effort: a failure here never blocks the
+ *  swap; the simulation then reports the named revert. */
+export async function ensureVenueLiquidity(q = null) {
+  if (!venue) return { ok: true, skipped: "no venue configured" };
+  if (config.dryRun) return { ok: true, skipped: "dry-run" };
+  if (!agentWallet) return { ok: false, reason: "AGENT_KEY not configured" };
+  try {
+    const venueAddr = await venue.getAddress();
+    if (!q || q.buySymbol === "ETH") {
+      const payoutEth = q ? Number(q.expectedOutHuman) || 0 : 0;
+      const [venueBal, agentBal] = await Promise.all([
+        provider.getBalance(venueAddr),
+        agentWallet.getAddress().then((a) => provider.getBalance(a)),
+      ]);
+      const plan = venueTopUpPlan(
+        Number(ethers.formatEther(venueBal)),
+        Number(ethers.formatEther(agentBal)),
+        payoutEth
+      );
+      if (plan.action === "none") return { ok: true };
+      if (plan.action === "cant") return { ok: false, reason: plan.reason };
+      const r = await sendEthFrom(agentWallet, venueAddr, plan.amountEth);
+      if (!r.ok) return { ok: false, reason: `venue ETH top-up failed: ${r.revert || r.hash}` };
+      console.log(`  [venue] topped up ${plan.amountEth.toFixed(4)} ETH (tx ${r.hash})`);
+      return { ok: true, toppedUpEth: plan.amountEth, tx: r.hash };
+    }
+    if (q.buySymbol === "USDC" && config.usdc) {
+      // ERC-20 buy side: the venue pays USDC from its own inventory. The
+      // mock asset's mint is an open testnet faucet, so refill it in place.
+      const dec = tokens.USDC.decimals;
+      const venueBal = await erc20(config.usdc).balanceOf(venueAddr);
+      const needBase = toBaseUnits(q.expectedOutHuman, dec);
+      const minBase = toBaseUnits(config.venueUsdcMin, dec);
+      if (venueBal >= needBase + minBase) return { ok: true };
+      const targetBase = toBaseUnits(config.venueUsdcTarget, dec);
+      const mintBase = targetBase > venueBal ? targetBase - venueBal : needBase + minBase - venueBal;
+      if (mintBase <= 0n) return { ok: true };
+      const r = await mintMockUsdcFrom(agentWallet, venueAddr, mintBase);
+      if (!r.ok) return { ok: false, reason: `venue USDC refill failed: ${r.revert || r.hash}` };
+      const human = Number(mintBase) / 10 ** dec;
+      console.log(`  [venue] minted ${human.toLocaleString()} USDC into the venue (tx ${r.hash})`);
+      return { ok: true, mintedUsdc: human, tx: r.hash };
+    }
+    return { ok: true, skipped: "pair needs no inventory" };
+  } catch (err) {
+    return { ok: false, reason: String(err?.message || err).slice(0, 200) };
+  }
+}
+
 // ── event poller (on-chain audit trail) ─────────────────────────────────────
 
 let lastPolledBlock = null;

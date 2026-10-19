@@ -585,6 +585,15 @@ async function runCommand(text, opts = {}) {
       return decision;
     }
     trace.quote = q;
+    // venue inventory self-heal (v3.9.4): top the counterparty up BEFORE
+    // simulating, so a dry venue refills instead of failing the pre-flight;
+    // the old failure surfaced as an opaque "unknown custom error" REJECT.
+    // Optional-chained so judge-mode contexts and test stubs keep working.
+    if (!config.dryRun && typeof c.ensureVenueLiquidity === "function") {
+      trace.venueLiquidity = await c
+        .ensureVenueLiquidity(q)
+        .catch((e) => ({ ok: false, reason: String(e?.message || e).slice(0, 160) }));
+    }
     const sellTok = tokens[intent.token];
     const sellBase = toBaseUnits(intent.amount, sellTok.decimals);
     const pre = config.dryRun

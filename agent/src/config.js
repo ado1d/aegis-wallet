@@ -119,6 +119,18 @@ export const config = {
   amountAnomalyX: num("AMOUNT_ANOMALY_X", 3),
   slippageBps: num("SLIPPAGE_BPS", 150),
 
+  // swap-venue inventory self-heal (chain.ensureVenueLiquidity). The shared
+  // MockSwap counterparty pays buy-side payouts from its OWN balance: every
+  // USDC->ETH swap drains its ETH. When the venue drops below VENUE_ETH_MIN
+  // the agent key tops it back up to VENUE_ETH_TARGET, never spending its
+  // last VENUE_GAS_RESERVE_ETH of gas money. The venue's USDC inventory
+  // (ETH->USDC swaps) refills the same way from the open testnet mint.
+  venueEthMin: num("VENUE_ETH_MIN", 0.02),
+  venueEthTarget: num("VENUE_ETH_TARGET", 0.1),
+  venueGasReserveEth: num("VENUE_GAS_RESERVE_ETH", 0.01),
+  venueUsdcMin: num("VENUE_USDC_MIN", 1000),
+  venueUsdcTarget: num("VENUE_USDC_TARGET", 5000),
+
   // behaviour
   port: num("PORT", 8787),
   host: env.HOST || "127.0.0.1", // set HOST=0.0.0.0 when running on a VPS
