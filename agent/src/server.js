@@ -485,6 +485,12 @@ async function route(req, res, url) {
         .then((b) => ethers.formatEther(b))
         .catch(() => null);
     }
+    // swap price reference (v3.9.5): what the Chainlink ETH/USD feed says
+    // right now, so every venue rate can be compared against it at a glance.
+    // Best-effort: no feed on this chain = { skipped }, never a failed /health.
+    body.oracle = await chain
+      .oracleStatus()
+      .catch(() => ({ error: "oracle status unavailable" }));
     return json(res, 200, body);
   }
 

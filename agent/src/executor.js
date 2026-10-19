@@ -14,6 +14,7 @@ import * as chain from "./chain.js";
 import { appendJournal } from "./journal.js";
 import { extractAmount, extractToken, extractRecipient, detectInvalidAddress } from "./intent.js";
 import { mergeSlots, missingSlots, missingQuestion, isCancelText, pendingAlive } from "./convo.js";
+import { oracleDisclosure } from "./oracle.js";
 
 const keccak = (s) =>
   "0x" +
@@ -612,6 +613,38 @@ async function runCommand(text, opts = {}) {
       return decision;
     }
     trace.quote = q;
+    // independent price check (v3.9.5): the venue's rate is set by its owner
+    // by hand; verify every quote against the Chainlink ETH/USD feed BEFORE
+    // the venue top-up (no side effects while the price is still suspect).
+    // Off-market beyond ORACLE_MAX_DRIFT_PCT -> refuse; within the band the
+    // reply still discloses the venue-vs-market gap. Optional-chained so
+    // judge-mode contexts and test stubs keep working.
+    let ora = null;
+    if (typeof c.oracleCheck === "function") {
+      ora = await c.oracleCheck(q).catch((e) => ({
+        ok: true,
+        warn: `oracle check errored (${String(e?.message || e).slice(0, 120)})`,
+      }));
+      trace.oracle = ora;
+      if (ora && ora.ok === false) {
+        const decision = {
+          ...trace,
+          decision: "reject",
+          rejectionCategory: "Slippage",
+          explanation:
+            `REJECTED: the venue's exchange rate is too far from the market price. ` +
+            (Number.isFinite(ora.driftPct)
+              ? `This swap implies $${ora.impliedUsdPerEth.toFixed(2)} per ETH, but the Chainlink oracle reports ` +
+                `$${ora.oracleUsdPerEth.toFixed(2)} per ETH (${Math.abs(ora.driftPct).toFixed(1)}% apart, limit ${ora.maxDriftPct}%). `
+              : "") +
+            (ora.reason ? `${ora.reason}. ` : "") +
+            `The venue owner must setRate before this pair can be swapped. Nothing moved.`,
+          elapsedMs: Date.now() - started,
+        };
+        append({ type: "decision", ...decision });
+        return decision;
+      }
+    }
     // venue inventory self-heal (v3.9.4): top the counterparty up BEFORE
     // simulating, so a dry venue refills instead of failing the pre-flight;
     // the old failure surfaced as an opaque "unknown custom error" REJECT.
@@ -674,7 +707,9 @@ async function runCommand(text, opts = {}) {
       decision: "swap",
       explanation:
         `${policy.explanation} Quoted ${q.expectedOutHuman} ${q.buySymbol}, minOut ${q.minOutHuman} (${config.slippageBps / 100}% slippage guard). ` +
-        `Executed${res.hash ? ` (tx ${res.hash})` : ""}.`,
+        `Executed${res.hash ? ` (tx ${res.hash})` : ""}.` +
+        (ora ? oracleDisclosure(ora) : "") +
+        (ora?.warn ? ` Note: ${ora.warn}.` : ""),
       tx: { agentSwap: res.hash },
       elapsedMs: Date.now() - started,
     };

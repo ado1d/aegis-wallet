@@ -131,6 +131,20 @@ export const config = {
   venueUsdcMin: num("VENUE_USDC_MIN", 1000),
   venueUsdcTarget: num("VENUE_USDC_TARGET", 5000),
 
+  // independent swap-price verification (oracle.js, v3.9.5). The venue's
+  // rate is owner-set; every quote is checked against the Chainlink ETH/USD
+  // feed before money moves. Outside ORACLE_MAX_DRIFT_PCT the swap is
+  // refused; inside the band the reply still discloses the venue-vs-market
+  // gap. Default band is loose (90%) because the Sepolia demo venue carries
+  // a FIXED $4,000/ETH rate set at deployment: use 2-5 for a production or
+  // market-tracking venue. ORACLE_FEED empty = auto (Sepolia feed on
+  // chainId 11155111, none elsewhere, e.g. local anvil). ORACLE_STRICT
+  // makes a stale/unreachable oracle fail CLOSED instead of warn-only.
+  oracleFeed: (env.ORACLE_FEED || "").trim(),
+  oracleMaxDriftPct: num("ORACLE_MAX_DRIFT_PCT", 90),
+  oracleMaxAgeHrs: num("ORACLE_MAX_AGE_HRS", 48),
+  oracleStrict: bool("ORACLE_STRICT", false),
+
   // behaviour
   port: num("PORT", 8787),
   host: env.HOST || "127.0.0.1", // set HOST=0.0.0.0 when running on a VPS

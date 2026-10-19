@@ -8,6 +8,7 @@ import { VAULT_ABI, ERC20_ABI, VENUE_ABI, AGENT_STATUS } from "./abi.js";
 import { config, tokens, NATIVE, tokenByAddress, toBaseUnits } from "./config.js";
 import { appendJournal } from "./journal.js";
 import { getStore } from "./store.js";
+import { ethUsdPrice, venueRateSanity } from "./oracle.js";
 
 const provider = new ethers.JsonRpcProvider(config.rpcUrl);
 const ownerWallet = config.ownerKey
@@ -496,6 +497,37 @@ export async function ensureVenueLiquidity(q = null) {
   } catch (err) {
     return { ok: false, reason: String(err?.message || err).slice(0, 200) };
   }
+}
+
+// ── independent swap-price verification (v3.9.5) ────────────────────────────
+// The venue's rate is owner-set; this cross-checks every quote against the
+// Chainlink ETH/USD feed. Called by the executor AFTER a successful quote and
+// BEFORE the venue top-up (no side effects while the price is still suspect).
+// Returns { ok:false, ... } ONLY when the swap must be refused; degraded
+// oracle states (missing feed / stale / unreachable) warn unless strict.
+
+/** Raw feed state for /health (no verdict, just what the oracle says). */
+export async function oracleStatus() {
+  return ethUsdPrice(provider);
+}
+
+export async function oracleCheck(q) {
+  const o = await ethUsdPrice(provider);
+  if (o.skipped) return { ok: true, skipped: o.skipped };
+  if (o.error) {
+    if (config.oracleStrict) {
+      return { ok: false, verdict: "unreachable", reason: `the Chainlink oracle could not be read (${o.error}) and ORACLE_STRICT is on` };
+    }
+    return { ok: true, warn: `oracle unreachable (${o.error}) — price check skipped` };
+  }
+  if (o.stale) {
+    if (config.oracleStrict) {
+      return { ok: false, verdict: "stale", reason: `the Chainlink oracle answer is ${o.ageHrs}h old (limit ${config.oracleMaxAgeHrs}h) and ORACLE_STRICT is on` };
+    }
+    return { ok: true, warn: `oracle answer is ${o.ageHrs}h old — price check skipped`, priceUsd: o.priceUsd };
+  }
+  const s = venueRateSanity(q, o.priceUsd);
+  return { ...s, feed: o.feed, updatedAt: o.updatedAt };
 }
 
 // ── event poller (on-chain audit trail) ─────────────────────────────────────

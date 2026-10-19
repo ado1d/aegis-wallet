@@ -234,9 +234,99 @@ const runSwap = async (stub) =>
     JSON.stringify({ score: d.risk?.score, band: d.risk?.band }));
 }
 
+// C7: oracle off-market quote -> refused BEFORE the venue top-up or simulation
+{
+  const order = [];
+  const stub = mkStub({
+    quoteSwap: async () => { order.push("quote"); return { sellSymbol: "USDC", buySymbol: "ETH", expectedOutHuman: 0.004, minOutHuman: 0.0039, minOutBase: "3940000000000000" }; },
+    oracleCheck: async () => { order.push("oracle"); return { ok: false, verdict: "off-market", impliedUsdPerEth: 12500, oracleUsdPerEth: 2423.48, driftPct: 415.8, maxDriftPct: 90 }; },
+    ensureVenueLiquidity: async () => { order.push("ensure"); return { ok: true }; },
+    simulate: async () => { order.push("simulate"); return { ok: true }; },
+  });
+  const d = await runSwap(stub);
+  check("off-market venue rate -> REJECT naming both prices and the limit",
+    d.decision === "reject" && d.rejectionCategory === "Slippage" &&
+    /\$12500\.00 per ETH/.test(d.explanation) && /\$2423\.48/.test(d.explanation) &&
+    /415\.8% apart, limit 90%/.test(d.explanation),
+    JSON.stringify(d.explanation));
+  check("nothing moves after an off-market quote: no top-up, no simulation",
+    order.join(",") === "quote,oracle",
+    order.join(","));
+}
+
+// C8: within-band drift -> swap executes AND discloses the venue-vs-market gap
+{
+  const stub = mkStub({
+    oracleCheck: async () => ({ ok: true, verdict: "within", impliedUsdPerEth: 4000, oracleUsdPerEth: 2423.48, driftPct: 65.1, maxDriftPct: 90, feed: "0x694AA1769357215DE4FAC081bf1f309aDC325306" }),
+    ensureVenueLiquidity: async () => ({ ok: true }),
+  });
+  const d = await runSwap(stub);
+  check("65% drift inside the 90% band still swaps (fixed-rate demo venue)",
+    d.decision === "swap" && /Quoted 0\.0125 ETH/.test(d.explanation),
+    JSON.stringify({ d: d.decision, e: d.explanation }));
+  check("the reply DISCLOSES the market reference price and the gap",
+    /Reference price: Chainlink ETH\/USD \$2423\.48/.test(d.explanation) &&
+    /implies \$4000\.00 per ETH/.test(d.explanation) && /65\.1% above market/.test(d.explanation),
+    JSON.stringify(d.explanation));
+  check("the oracle verdict lands in the decision trace",
+    d.oracle && d.oracle.verdict === "within" && d.oracle.driftPct === 65.1,
+    JSON.stringify(d.oracle));
+}
+
 // ── Phase D: build identity ───────────────────────────────────────────────────
 console.log("\nD. build identity");
 check("AGENT_VERSION is v3.9.4", AGENT_VERSION === "v3.9.4", AGENT_VERSION);
+
+// ── Phase E: oracle price sanity (pure math, no chain) ────────────────────────
+console.log("\nE. venueRateSanity (oracle cross-check, band 90%)");
+const { venueRateSanity, oracleDisclosure } = await import(`${ROOT}/src/oracle.js`);
+
+{
+  const s = venueRateSanity({ sellSymbol: "USDC", buySymbol: "ETH", sellAmountHuman: 50, expectedOutHuman: 0.0125 }, 2423.48, 90);
+  check("USDC->ETH at the live venue rate ($4,000 implied) is within the 90% band",
+    s.ok && s.verdict === "within" && s.impliedUsdPerEth === 4000 && s.driftPct === 65.1,
+    JSON.stringify(s));
+}
+{
+  const s = venueRateSanity({ sellSymbol: "USDC", buySymbol: "ETH", sellAmountHuman: 50, expectedOutHuman: 0.002 }, 2423.48, 90);
+  check("a 10x fat-fingered rate ($25,000 implied) is off-market",
+    !s.ok && s.verdict === "off-market" && Math.abs(s.driftPct) > 900,
+    JSON.stringify(s));
+}
+{
+  const s = venueRateSanity({ sellSymbol: "ETH", buySymbol: "USDC", sellAmountHuman: 0.05, expectedOutHuman: 121.17 }, 2423.48, 90);
+  check("ETH->USDC implied price = out/sell, market-anchored rate is within",
+    s.ok && s.verdict === "within" && s.impliedUsdPerEth === 2423.4,
+    JSON.stringify(s));
+}
+{
+  const s = venueRateSanity({ sellSymbol: "USDC", buySymbol: "ETH", sellAmountHuman: 50, expectedOutHuman: 0.25 }, 2423.48, 90);
+  check("a venue paying 10x TOO MUCH (negative drift) is also flagged broken",
+    !s.ok && s.verdict === "off-market" && s.driftPct < -90,
+    JSON.stringify(s));
+}
+{
+  const s = venueRateSanity({ sellSymbol: "USDC", buySymbol: "ETH", sellAmountHuman: 50, expectedOutHuman: 0 }, 2423.48, 90);
+  check("a zero-output quote is refused, never treated as a free price",
+    !s.ok && s.verdict === "off-market",
+    JSON.stringify(s));
+}
+{
+  const s = venueRateSanity({ sellSymbol: "USDC", buySymbol: "ETH", sellAmountHuman: 50, expectedOutHuman: 0.0125 }, 0, 90);
+  check("no oracle price -> the check reports itself skipped (anvil, no feed)",
+    s.ok && s.verdict === "skipped",
+    JSON.stringify(s));
+}
+{
+  const d = oracleDisclosure({ verdict: "within", impliedUsdPerEth: 4000, oracleUsdPerEth: 2423.48, driftPct: 65.1 });
+  check("disclosure line names both prices and the direction",
+    /Chainlink ETH\/USD \$2423\.48/.test(d) && /65\.1% above market/.test(d),
+    d);
+  check("small drift (<1%) stays silent, warn-only states stay silent",
+    oracleDisclosure({ verdict: "within", impliedUsdPerEth: 2425, oracleUsdPerEth: 2423.48, driftPct: 0.06 }) === "" &&
+    oracleDisclosure(null) === "" && oracleDisclosure({ warn: "oracle stale" }) === "",
+    "unexpected disclosure for quiet cases");
+}
 
 console.log(`\n${pass} passed, ${fail} failed ${fail ? "\nTEST SUITE FAILED" : "(swap-venue regression suite)"}`);
 process.exit(fail ? 1 : 0);
