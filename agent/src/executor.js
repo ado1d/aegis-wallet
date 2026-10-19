@@ -393,7 +393,9 @@ async function runCommand(text, opts = {}) {
       ...trace,
       decision: "reject",
       rejectionCategory: Object.entries(REJECTION_CATEGORY).find(([, v]) => v === category)?.[0],
-      explanation: policy.explanation + (res.ok ? "" : " (Note: the on-chain audit log could not be written just now — the refusal stands, nothing was sent.)"),
+      explanation: policy.explanation + (res.ok
+        ? " Refusal written to the on-chain rejection ledger — that transaction is an audit entry, no funds moved."
+        : " (Note: the on-chain audit log could not be written just now — the refusal stands, nothing was sent.)"),
       tx: { logRejection: res.hash },
       onchainRejectionLogged: !!res.ok,
       elapsedMs: Date.now() - started,
@@ -441,7 +443,8 @@ async function runCommand(text, opts = {}) {
       explanation:
         `HELD by the risk engine (score ${risk.score}/100): ${risk.signals.join("; ")}. ` +
         `Swaps have no human-approval queue in the vault contract, so I refuse rather than move money a human should double-check. ` +
-        `Nothing was swapped. Try a smaller amount, wait a bit if you have been moving funds fast, or perform this swap from your owner wallet.` +
+        `Nothing was swapped. Try a smaller amount, or wait a bit if you have been moving funds fast; ` +
+        `you can also withdraw the funds on the Security page and swap outside the vault.` +
         (res.ok ? "" : " (Note: the on-chain audit log could not be written just now — the refusal stands, nothing was sent.)"),
       tx: { logRejection: res.hash },
       onchainRejectionLogged: !!res.ok,

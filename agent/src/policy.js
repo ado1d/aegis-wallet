@@ -124,7 +124,8 @@ export function evaluatePolicySwap(intent, state) {
       check: "PER_TX",
       explanation:
         `Blocked by PER_TX: swap sell size ${fmt(base, t.decimals)} ${intent.token} exceeds the cap ${fmt(t.maxPerTx, t.decimals)}. ` +
-        `Swaps have no human-approval path; the owner can raise the policy or perform this manually.`,
+        `Swaps have no human-approval path. The owner can raise this per-transaction limit on the Limits page and retry, ` +
+        `or withdraw the funds and swap outside the vault.`,
     };
   }
   if (spent + base > cap) {
@@ -134,7 +135,8 @@ export function evaluatePolicySwap(intent, state) {
       explanation:
         `Blocked by ROLLING_WINDOW: swaps share the same 24h budget as transfers ` +
         `(${fmt(t.spentInWindow, t.decimals)}/${fmt(t.dailyLimit, t.decimals)} ${intent.token} already spent; ` +
-        `this swap would add ${fmt(base, t.decimals)}). No bypass via swaps.`,
+        `this swap would add ${fmt(base, t.decimals)}). No bypass via swaps — wait for the 24h window to roll, ` +
+        `or raise the daily limit on the Limits page.`,
     };
   }
   if (bal < base) {
