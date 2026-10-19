@@ -158,6 +158,27 @@ had its reverse rate set; add it once from the venue owner's key:
 --private-key $OWNER_KEY --rpc-url $RPC` (4000000000 / 1e18 encodes $4,000
 per ETH; adjust to taste).
 
+Since v3.9.5 the agent also verifies swap prices independently and refuses
+swaps it cannot serve, before any money moves:
+
+- every quote is cross-checked against the Chainlink ETH/USD feed (public
+  Sepolia aggregator, auto-detected; `ORACLE_FEED` overrides). Beyond
+  `ORACLE_MAX_DRIFT_PCT` (default 90, loose because the demo venue's rate
+  is fixed by hand; use 2-5 for a market-tracking venue) the swap is
+  refused with both prices in the reply; inside the band the reply still
+  discloses the venue-versus-market gap. `/health` reports the live oracle
+  price.
+- a swap whose payout exceeds what the venue can ever hold (current
+  balance plus everything the agent key can spare) is refused as too
+  large, with the payout and the reachable cap in the reply, instead of
+  failing through the inventory error with a misleading hint.
+- a swap the risk engine wants a human to look at (score 30-59) is refused
+  honestly — the vault contract's approval queue can only hold transfers,
+  so there is no queue path for swaps.
+- a missing feed (local anvil), a stale answer or an unreachable RPC
+  degrades the price check to a visible warning unless `ORACLE_STRICT=true`
+  fails it closed.
+
 On Render, `render.yaml` is a complete alternative blueprint: `aegis-agent`
 and `aegis-dashboard` on the free tier, with the secrets marked `sync:
 false` set once in the Render dashboard.
@@ -183,8 +204,9 @@ npm run test:convo         # 26 conversation-memory checks
 npm run test:multilingual  # 66 multilingual and code-mixing cases
 npm run test:llm           # 24 fuzzy-matching + LLM network behavior checks
 npm run test:breaker       # circuit-breaker half-open cycle
-npm run test:venue         # 23 swap-venue checks: revert naming, inventory
-                           # top-up plan, executor swap branch
+npm run test:venue         # 44 swap-venue checks: revert naming, inventory
+                           # top-up plan, executor swap branch, oracle
+                           # price sanity, too-large and review-band refusals
 npm run e2e:product        # 28-check product run (needs a live local stack)
 ```
 

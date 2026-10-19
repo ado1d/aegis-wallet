@@ -315,7 +315,7 @@ const runSwap = async (stub) =>
 
 // ── Phase D: build identity ───────────────────────────────────────────────────
 console.log("\nD. build identity");
-check("AGENT_VERSION is v3.9.4", AGENT_VERSION === "v3.9.4", AGENT_VERSION);
+check("AGENT_VERSION is v3.9.5", AGENT_VERSION === "v3.9.5", AGENT_VERSION);
 
 // ── Phase E: oracle price sanity (pure math, no chain) ────────────────────────
 console.log("\nE. venueRateSanity (oracle cross-check, band 90%)");

@@ -1,6 +1,6 @@
 {
   "name": "aegis-agent",
-  "version": "3.9.4",
+  "version": "3.9.5",
   "description": "Aegis Wallet agent backend: accounts, per-user vaults, multilingual intent parsing, risk engine, policy enforcement",
   "type": "module",
   "main": "src/server.js",
