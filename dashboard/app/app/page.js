@@ -18,6 +18,7 @@ import TabActivity from "../../components/product/TabActivity.js";
 import TabPayees from "../../components/product/TabPayees.js";
 import TabLimits from "../../components/product/TabLimits.js";
 import TabSecurity from "../../components/product/TabSecurity.js";
+import HelpAssistant from "../../components/product/HelpAssistant.js";
 
 const NAV = [
   { id: "home", label: "Home", icon: "🏠" },
@@ -105,6 +106,7 @@ function AppInner() {
         </main>
       </div>
       <Toasts />
+      <HelpAssistant />
     </div>
   );
 }
