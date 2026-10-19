@@ -179,6 +179,24 @@ swaps it cannot serve, before any money moves:
   degrades the price check to a visible warning unless `ORACLE_STRICT=true`
   fails it closed.
 
+Since v3.9.6 the refusals themselves are honest about what the user can
+actually do:
+
+- over-cap swap refusals point at the real remedies (raise the limit on
+  the Limits page and retry, or withdraw and swap outside the vault) —
+  the vault has no owner-swap path, so "perform this manually" was a
+  dead end and is gone.
+- every policy refusal states that the transaction shown next to it is
+  the on-chain `logRejection` audit entry and no funds moved — the
+  dashboard renders that tx hash as an explorer link, which used to read
+  like the rejected swap might have gone through.
+- when a venue pair is unpriced (`MockSwap__RateNotSet`), the agent
+  probes the opposite direction with one read-only quote and, if the
+  venue prices it, says so in the refusal ("The opposite direction
+  (USDC → ETH) is currently available"). The rules-fallback parser also
+  treats "usd" as USDC in swap direction ("0.04 eth to usd" used to
+  silently flip to a sell-USDC parse under the LLM breaker).
+
 On Render, `render.yaml` is a complete alternative blueprint: `aegis-agent`
 and `aegis-dashboard` on the free tier, with the secrets marked `sync:
 false` set once in the Render dashboard.
