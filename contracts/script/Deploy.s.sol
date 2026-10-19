@@ -43,10 +43,12 @@ contract DeployAegis is Script {
 
         // ---------------- 1. demo asset ----------------
         address asset;
+        bool deployedMock = false;
         if (envAsset == address(0)) {
             MockUSDC usdc = new MockUSDC();
             usdc.mint(owner, 10_000e6); // demo faucet (mock only)
             asset = address(usdc);
+            deployedMock = true;
             console2.log("[deploy] MockUSDC deployed, 10,000 demo USDC minted to owner:", asset);
         } else {
             asset = envAsset;
@@ -58,8 +60,21 @@ contract DeployAegis is Script {
         // fixed rate: sell USDC (6 dec) -> ETH at $ETH_PRICE per ETH
         //   out(wei) = usdcAmount * 1e18 / (price * 1e6)
         venue.setRate(asset, address(0), 1 ether, ethPrice * 1e6);
+        // reverse rate: sell ETH -> USDC at the same price
+        //   out(usdc) = sellWei * (price * 1e6) / 1e18
+        // (deployed when this script was USDC->ETH only; without the reverse
+        // rate every "swap X eth to dollars" reverted with RateNotSet)
+        venue.setRate(address(0), asset, ethPrice * 1e6, 1 ether);
+        if (deployedMock) {
+            // USDC inventory so ETH->USDC swaps can pay out (mock asset: open
+            // testnet mint; costs no ETH). The agent's ensureVenueLiquidity
+            // refills this at runtime when it runs low.
+            MockUSDC(asset).mint(address(venue), 20_000e6);
+        }
         // fund the venue with ETH inventory so USDC->ETH swaps pay out
-        // (2 demo swaps of 200+150 USDC at $4k/ETH need 0.0875 ETH)
+        // (2 demo swaps of 200+150 USDC at $4k/ETH need 0.0875 ETH; the
+        // agent's ensureVenueLiquidity tops the venue back up at runtime
+        // once this seed drains, from the agent key's operational pot)
         uint256 venueSeed = 0.1 ether;
         if (address(owner).balance > venueSeed + 0.01 ether) {
             payable(address(venue)).transfer(venueSeed);
