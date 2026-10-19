@@ -19,7 +19,8 @@
     "test:venue": "node scripts/test-swap-venue.js",
     "test:multilingual": "node scripts/test-multilingual.mjs",
     "test:llm": "node scripts/test-llm-network.js",
-    "test:breaker": "node scripts/test-llm-breaker.js"
+    "test:breaker": "node scripts/test-llm-breaker.js",
+    "evidence": "node harvest-evidence.mjs"
   },
   "engines": {
     "node": ">=18.17"
